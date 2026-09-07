@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Panel Calculator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #f4f4f1;
+    --card: #fcfcfb;
+    --border: #e3e2dd;
+    --grid: #ecebe7;
+    --text: #0b0b0b;
+    --text-2: #52514e;
+    --muted: #8a8983;
+    --s1: #2a78d6;   /* selected orientation */
+    --s2: #eb6834;   /* optimal orientation */
+    --s3: #1baf7a;   /* third day line */
+    --s1-wash: rgba(42,120,214,.10);
+    --accent: #2a78d6;
+    --radius: 10px;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--surface); color: var(--text); font: 14px/1.45 var(--sans); }
+  header { padding: 18px 24px 6px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .share { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .iconbtn { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text-2); }
+  .iconbtn:hover { color: var(--accent); }
+  header h1 { margin: 0; font-size: 20px; font-weight: 650; }
+  header p { margin: 4px 0 0; color: var(--text-2); }
+  main { padding: 12px 24px 40px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-width: 0; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 650; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .full { grid-column: 1 / -1; }
+  #map { flex: 1; min-height: 380px; border-radius: 8px; border: 1px solid var(--border); }
+  #locCard { display: flex; flex-direction: column; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row + .row { margin-top: 8px; }
+  input[type=text], input[type=number] { font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); }
+  input[type=number] { width: 96px; }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(.95); color: #fff; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .ctl { display: grid; grid-template-columns: 120px 1fr 72px; gap: 10px; align-items: center; margin: 8px 0; }
+  .ctl label { color: var(--text-2); }
+  .ctl output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .unit-cycle { cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; user-select: none; }
+  .unit-cycle:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); display: block; }
+  .slwrap { position: relative; }
+  .pop { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); width: 300px; max-width: 90vw; background: var(--text); color: #fff; padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.4; z-index: 1100; box-shadow: 0 4px 14px rgba(0,0,0,.25); display: none; }
+  .pop::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--text); }
+  .slwrap:hover .pop, .slwrap:focus-within .pop { display: block; }
+  .pop b { font-weight: 650; }
+  .pop .dim { color: #c3c2b7; }
+  .pop .bars { display: flex; gap: 2px; align-items: flex-end; height: 26px; margin: 6px 0 2px; }
+  .pop .bars i { flex: 1; background: #86b6ef; border-radius: 2px 2px 0 0; min-height: 1px; }
+  .pop .bars i.now { background: #3987e5; }
+  .pop .months { display: flex; justify-content: space-between; color: #c3c2b7; font-size: 10px; }
+  .pop button { margin-top: 8px; padding: 4px 10px; font-size: 12px; background: #fff; color: var(--text); border: 0; }
+  .climate { margin: -2px 0 6px 130px; }
+  .climate a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fff; }
+  .tile .label { color: var(--text-2); font-size: 12px; }
+  .tile .value { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 3px; min-width: 0; line-height: 1.15; }
+  .tile .value small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+  .tile.hero .value { font-size: clamp(22px, 2.2vw, 30px); }
+  .tile { min-width: 0; }
+  .tile .value .sym { font-size: .6em; vertical-align: .18em; margin-right: 1px; }
+  .cur { display: inline-block; min-width: 1.1em; text-align: center; }
+  .chartbox { position: relative; height: 280px; }
+  .heatwrap { position: relative; }
+  #heat { width: 100%; display: block; cursor: crosshair; border-radius: 6px; }
+  .sim { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 16px; align-items: start; }
+  .sim > .tiles { grid-column: 2; grid-row: 1; }
+  .sim > .battery { grid-column: 1 / -1; grid-row: 2; border-top: 1px solid var(--grid); padding-top: 12px; }
+  #loadPreset { width: 200px; max-width: 100%; }
+  @media (max-width: 960px) { .sim { grid-template-columns: 1fr; } .sim > .tiles, .sim > .battery { grid-column: auto; grid-row: auto; } }
+  .loadwrap { position: relative; margin: 6px 0 8px; }
+  #loadEd, .priceEd { width: 100%; display: block; cursor: crosshair; touch-action: none; }
+  .pricePreset { width: 240px; max-width: 100%; }
+  .simcharts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 14px; }
+  .simcharts > div, .sim > div, .chartbox { min-width: 0; }
+  @media (max-width: 960px) { .simcharts { grid-template-columns: 1fr; } }
+  .sim .ctl { grid-template-columns: 150px 1fr 90px; }
+  .sim .ctl.wide { grid-template-columns: 150px 1fr; }
+  .chip { padding: 2px 9px; font-size: 12px; border-radius: 999px; margin-left: 4px; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .battery.off .ctl:not(.keep), .battery.off .pills { opacity: .4; pointer-events: none; }
+  .pills { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 8px 150px; }
+  .pills .chip { margin-left: 0; }
+  .pills > .hint { width: 52px; font-size: 11px; line-height: 22px; }
+  #battPreset { width: 300px; max-width: 100%; }
+  select { font: inherit; padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); }
+  #heattip, #loadtip, #imptip, #exptip { position: absolute; pointer-events: none; background: var(--text); color: #fff; padding: 6px 8px; border-radius: 6px; font-size: 12px; white-space: nowrap; display: none; transform: translate(-50%, -125%); z-index: 5; }
+  .legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-2); font-size: 12px; }
+  .legend .bar { flex: 1; max-width: 220px; height: 10px; border-radius: 5px; border: 1px solid var(--border); background: linear-gradient(90deg, #f3b5b3, #ffffff 50%, #8fd18f 67%, #2e9e2e 83%, #0a5c0a); }
+  .compass { display: flex; gap: 16px; align-items: center; justify-content: center; margin-top: 6px; }
+  .compass svg { overflow: visible; cursor: pointer; touch-action: none; user-select: none; }
+  .compass svg:hover { filter: drop-shadow(0 0 3px rgba(42,120,214,.35)); }
+  .compass text { font-family: var(--sans); font-size: 11px; fill: var(--text-2); }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 8px; border-bottom: 1px solid var(--grid); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-2); font-weight: 600; }
+  details summary { cursor: pointer; color: var(--text-2); font-size: 12px; margin-top: 8px; }
+  .adv { margin-top: 6px; }
+  .adv > summary { list-style: none; font-size: 13px; padding: 6px 0; margin: 0; }
+  .adv > summary::-webkit-details-marker { display: none; }
+  .adv > summary::before { content: '▸'; display: inline-block; width: 14px; }
+  .adv[open] > summary::before { content: '▾'; }
+  .adv > summary:hover { color: var(--accent); }
+  .collapsible > .cardhead h2, .collapsible > h2.cardhead { cursor: pointer; user-select: none; }
+  .collapsible > .cardhead h2::before, .collapsible > h2.cardhead::before { content: '▾'; display: inline-block; width: 16px; }
+  .collapsible.collapsed > .cardhead h2::before, .collapsible.collapsed > h2.cardhead::before { content: '▸'; }
+  .collapsible > .cardhead h2:hover, .collapsible > h2.cardhead:hover { color: var(--accent); }
+  .collapsible.collapsed > :not(.cardhead) { display: none; }
+  .collapsible.collapsed > .cardhead, .collapsible.collapsed > .cardhead h2 { margin-bottom: 0; }
+  .status { color: var(--muted); font-size: 12px; min-height: 16px; }
+  .az-handle { width: 16px; height: 16px; border-radius: 50%; background: var(--s1); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--s1), 0 1px 4px rgba(0,0,0,.4); cursor: grab; }
+  .az-handle:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Solar Panel Calculator</h1>
+  </div>
+  <div class="share">
+    <span class="hint" id="shareNote"></span>
+    <button id="copyBtn" class="iconbtn" title="Share: copy a link that reproduces this whole configuration" aria-label="Copy share link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="locCard">
+    <h2>Location</h2>
+    <div class="row">
+      <input type="text" id="search" placeholder="Search a place (e.g. Copenhagen)" style="flex:1; min-width:180px">
+      <button id="searchBtn">Search</button>
+      <button id="geoBtn" title="Use browser geolocation">Use my location</button>
+      <button id="roofBtn" title="Zoom the satellite view in on the pin">Zoom to pin</button>
+    </div>
+    <div class="row"><span class="hint">Click the map or drag the marker. Drag the arrow tip to line the panel direction up with your roof.</span></div>
+    <div class="status" id="status"></div>
+    <div id="map" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Panel &amp; system</h2>
+    <div class="ctl"><label for="tilt">Tilt</label><input type="range" id="tilt" min="0" max="90" step="1"><output id="tiltOut"></output></div>
+    <div class="ctl"><label for="az">Direction (azimuth)</label><input type="range" id="az" min="0" max="359" step="1"><output id="azOut"></output></div>
+    <div class="ctl"><label for="kwp">System size</label><input type="range" id="kwp" min="1" max="20" step="0.5"><output id="kwpOut" class="unit-cycle" title="Click to change unit (Wp, kWp, MWp, GWp)"></output></div>
+    <details class="adv" id="advPanel"><summary>Advanced</summary>
+    <div class="ctl"><label for="pr">Performance ratio</label>
+      <div class="slwrap"><input type="range" id="pr" min="0.5" max="1" step="0.01" aria-describedby="prPop">
+        <div class="pop" id="prPop" role="tooltip"><b>Performance ratio</b><br>Share of the panels' rated output that reaches the load on the direct path. Covers inverter or charge-controller conversion, cells running hotter than 25 °C, wiring and mismatch, dirt and shading.
+          <span class="dim">Not cell efficiency: that is already inside the kWp rating. Real systems land at 75–85 %; PVGIS assumes 86 %.</span></div></div>
+      <output id="prOut"></output></div>
+    <div class="hint climate" id="prNote"></div>
+    <div class="ctl"><label for="clear">Sky clearness</label>
+      <div class="slwrap">
+        <input type="range" id="clear" min="0.3" max="1" step="0.01" aria-describedby="clearPop">
+        <div class="pop" id="clearPop" role="tooltip"></div>
+      </div>
+      <output id="clearOut"></output></div>
+    <div class="hint climate" id="climateNote"></div>
+    <div class="ctl"><label for="albedo">Ground albedo</label><input type="range" id="albedo" min="0" max="0.9" step="0.05"><output id="albedoOut"></output></div>
+    <div class="hint climate" id="albedoNote"></div>
+    </details>
+    <div class="row">
+      <button class="primary" id="optBtn">Set to optimal orientation</button>
+      <span class="hint">Azimuth: 0° = North, 90° = East, 180° = South, 270° = West.</span>
+    </div>
+    <div class="compass">
+      <svg id="rose" width="140" height="140" viewBox="-60 -60 120 120" aria-label="Panel direction: click or drag to set"></svg>
+      <svg id="side" width="160" height="140" viewBox="0 0 140 120" aria-label="Panel tilt: click or drag to set"></svg>
+    </div>
+    <p class="hint" style="text-align:center; margin:2px 0 0">Click or drag the compass to set direction, and the side view to set tilt.</p>
+    <h2 style="margin-top:14px">Estimated output</h2>
+    <div class="tiles">
+      <div class="tile hero"><div class="label">Annual output</div><div class="value"><span id="tAnnual">–</span><small id="tAnnualU">kWh/yr</small></div></div>
+      <div class="tile"><div class="label">Specific yield</div><div class="value"><span id="tYield">–</span><small>kWh/kWp</small></div></div>
+      <div class="tile"><div class="label">Share of optimum</div><div class="value"><span id="tShare">–</span><small>%</small></div></div>
+      <div class="tile"><div class="label">Optimal orientation</div><div class="value" style="font-size:18px"><span id="tOpt">–</span></div></div>
+    </div>
+    <p class="hint" style="margin:10px 0 0">Clear-sky model (Meinel beam, Haurwitz global, isotropic diffuse and ground reflection), scaled month by month to match NASA POWER's measured irradiance for the site. Absolute numbers are indicative; the comparison between orientations is robust.</p>
+  </section>
+
+  <section class="card full">
+    <h2>Monthly output</h2>
+    <div class="chartbox"><canvas id="monthly"></canvas></div>
+    <details><summary>Show as table</summary><table id="monthTable"></table></details>
+  </section>
+
+  <section class="card">
+    <h2>Daily power profile (solar time)</h2>
+    <div class="chartbox"><canvas id="daily"></canvas></div>
+  </section>
+
+  <section class="card">
+    <h2>Annual output by tilt and direction</h2>
+    <p class="hint" style="margin:0 0 8px">Hover to read values, click to set the panel orientation. Circle = current, star = optimum.</p>
+    <div class="heatwrap"><canvas id="heat"></canvas><div id="heattip"></div></div>
+    <div class="legend"><span>Worst</span><span class="bar"></span><span>Best</span><span class="hint">White = average of all orientations</span><span id="legendMax" style="margin-left:auto"></span></div>
+  </section>
+
+  <section class="card full collapsible" id="simCard">
+    <h2 class="cardhead" title="Click to collapse or expand">System draw simulator</h2>
+    <p class="hint" style="margin:0 0 10px">Paint the power drawn hour by hour on a typical day, size a battery, and see whether the panels and battery keep the load powered through the year. Hours are in solar time.</p>
+    <div class="sim">
+      <div>
+        <div class="row"><strong>Typical daily draw</strong><span class="hint">Drag across the bars to set each hour.</span>
+          <select id="loadPreset" title="Load a preset profile" style="margin-left:auto">
+            <option value="">Preset…</option>
+            <optgroup label="Small nodes">
+              <option value="lora">LoRa mesh repeater (nRF52 + SX1262, continuous RX) · 45 mW</option>
+              <option value="esp32">ESP32 mesh node · 90 mW</option>
+              <option value="sensor">Duty-cycled sensor node · 5 mW</option>
+              <option value="pizero">Raspberry Pi Zero 2 W, idle · 0.7 W</option>
+            </optgroup>
+            <optgroup label="Buildings">
+              <option value="house">Household (evening peak)</option>
+              <option value="office">Daytime</option>
+              <option value="night">Night lighting</option>
+              <option value="flat">Constant 500 W</option>
+            </optgroup>
+          </select>
+          <label class="hint">Unit <select id="loadUnitSel" title="Unit for the draw editor"></select></label></div>
+        <div class="loadwrap"><canvas id="loadEd"></canvas><div id="loadtip"></div></div>
+        <div class="row">
+          <label>Average draw <input type="text" id="loadAll" style="width:170px" placeholder="45 mW, 12 mA at 3.7 V, or 60"> <span id="loadAllUnit" class="unit-cycle" title="Click to change unit (µW, mW, W, kW, MW, GW)"></span></label>
+          <button id="loadAllBtn" title="Set every hour to this value">Flatten</button>
+          <span class="hint" id="loadAllNote"></span>
+          <label style="margin-left:auto" title="Yearly consumption of this profile. Type the figure from an energy bill to scale the profile to match.">Annual use <input type="text" id="loadYear" style="width:90px"> <span id="loadYearUnit"></span></label>
+        </div>
+        <div class="row"><span class="hint">Editing the average or the annual use scales the whole profile; Flatten makes every hour equal.</span></div>
+      </div>
+      <div class="battery">
+        <div class="ctl wide keep"><label for="battPreset">Battery</label>
+          <div class="row"><input type="number" id="battN" min="1" step="1" style="width:56px" title="Number of identical modules or cells in parallel"> ×
+            <select id="battPreset" title="Sets capacity, voltage, usable depth and round-trip efficiency for a known battery">
+              <option value="">Preset…</option>
+              <optgroup label="Cells">
+                <option data-cap="2000" data-unit="mAh" data-v="1.2" data-dod="0.8" data-eff="0.7">AA NiMH · 2,000 mAh</option>
+                <option data-cap="3000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92">18650 Li-ion · 3,000 mAh</option>
+                <option data-cap="5000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92">21700 Li-ion · 5,000 mAh</option>
+                <option data-cap="6000" data-unit="mAh" data-v="3.2" data-dod="0.9" data-eff="0.95">32700 LiFePO₄ · 6,000 mAh</option>
+                <option data-cap="20000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92">USB power bank · 20,000 mAh</option>
+              </optgroup>
+              <optgroup label="Portable power stations (LiFePO₄)">
+                <option data-cap="768" data-unit="Wh" data-v="25.6" data-dod="0.9" data-eff="0.95">EcoFlow River 2 Pro · 768 Wh</option>
+                <option data-cap="1024" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">EcoFlow Delta 2 · 1 kWh</option>
+                <option data-cap="1070" data-unit="Wh" data-v="25.6" data-dod="0.9" data-eff="0.95">Jackery Explorer 1000 v2 · 1.07 kWh</option>
+                <option data-cap="2048" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">Bluetti AC200L · 2 kWh</option>
+                <option data-cap="4096" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">EcoFlow Delta Pro 3 · 4 kWh</option>
+                <option data-cap="6144" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">EcoFlow Delta Pro Ultra, one pack · 6.1 kWh</option>
+              </optgroup>
+              <optgroup label="Home, stackable modules">
+                <option data-cap="4800" data-unit="Wh" data-v="48" data-dod="0.9" data-eff="0.95">Pylontech US5000, per module · 4.8 kWh</option>
+                <option data-cap="5000" data-unit="Wh" data-v="48" data-dod="0.9" data-eff="0.95">Enphase IQ 5P, per unit · 5 kWh</option>
+                <option data-cap="5000" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95">EcoFlow PowerOcean, per module · 5 kWh</option>
+                <option data-cap="5000" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95">Anker SOLIX X1, per module · 5 kWh</option>
+                <option data-cap="4960" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">Bluetti EP600 B500, per module · 5 kWh</option>
+                <option data-cap="10200" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95">BYD Battery-Box HVS 10.2 · 10.2 kWh</option>
+                <option data-cap="13500" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92">Tesla Powerwall 3 · 13.5 kWh</option>
+              </optgroup>
+              <optgroup label="Car, vehicle-to-load">
+                <option data-cap="60000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.95">BYD Atto 3 · 60 kWh</option>
+                <option data-cap="64000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92">MG4 · 64 kWh</option>
+                <option data-cap="77400" data-unit="Wh" data-v="800" data-dod="0.8" data-eff="0.92">Hyundai Ioniq 5 / Kia EV6 · 77 kWh</option>
+                <option data-cap="131000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92">Ford F-150 Lightning · 131 kWh</option>
+              </optgroup>
+            </select>
+            <label title="Run every simulation without any storage"><input type="checkbox" id="noBatt"> No battery</label>
+          </div></div>
+        <details class="adv" id="advBatt"><summary>Advanced</summary>
+        <div class="ctl wide"><label for="battCap">Battery capacity</label>
+          <div class="row"><input type="number" id="battCap" min="0" step="any" style="width:100px"><select id="battCapUnit"><option>mAh</option><option>Ah</option><option>Wh</option></select><span class="hint" id="battEquiv"></span></div></div>
+        <div class="ctl wide"><label for="battV">Battery voltage</label>
+          <div class="row"><input type="number" id="battV" min="0.1" step="any" style="width:100px"> V
+            <span id="vChips"><button class="chip" data-v="1.2" title="1S NiMH">1.2 V</button><button class="chip" data-v="3.2" title="1S LiFePO4">3.2 V</button><button class="chip" data-v="3.7" title="1S Li-ion">3.7 V</button><button class="chip" data-v="12">12 V</button><button class="chip" data-v="24">24 V</button><button class="chip" data-v="48">48 V</button><button class="chip" data-v="400">400 V</button><button class="chip" data-v="800" title="800 V EV packs such as Hyundai E-GMP">800 V</button></span></div></div>
+        <div class="ctl wide"><label for="battChg">Charge limit</label><div class="row"><input type="text" id="battChg" style="width:170px" placeholder="200 mA at 4 V, 0.8 W, 3 kW"><span class="hint" id="battChgNote"></span></div></div>
+        <div class="ctl wide"><label for="battDis">Discharge limit</label><div class="row"><input type="text" id="battDis" style="width:170px" placeholder="0.8 W or 3 kW"><span class="hint" id="battDisNote"></span></div></div>
+        <div class="ctl"><label for="dod">Usable depth</label>
+          <div class="slwrap"><input type="range" id="dod" min="0.2" max="1" step="0.05" aria-describedby="dodPop">
+            <div class="pop" id="dodPop" role="tooltip"><b>Usable depth of discharge</b><br>How much of the rated capacity the system may draw before it stops supplying the load. The rest is never touched, which protects the battery from deep discharge.
+              <span class="dim">The state-of-charge chart shows the usable part, so 0 % there means the reserve is spent, not that the cells are flat. LiFePO₄ 80–90 %, Li-ion about 80 %, lead-acid 50 %.</span></div></div>
+          <output id="dodOut"></output></div>
+        <div class="pills" data-for="dod"><button class="chip" data-v="0.5">Lead-acid 50 %</button><button class="chip" data-v="0.8">Li-ion 80 %</button><button class="chip" data-v="0.8">NiMH 80 %</button><button class="chip" data-v="0.9">LiFePO₄ 90 %</button></div>
+        <div class="ctl"><label for="battEff">Round-trip efficiency</label>
+          <div class="slwrap"><input type="range" id="battEff" min="0.5" max="1" step="0.01" aria-describedby="battEffPop">
+            <div class="pop" id="battEffPop" role="tooltip"><b>Round-trip efficiency</b><br>Extra loss for energy that goes through the battery instead of straight to the load: cell chemistry plus the charge and discharge electronics. Applied half on the way in and half on the way out.
+              <span class="dim">Do not include the inverter here if it is already in the performance ratio. Lithium cells 90–95 %, lead-acid about 80 %.</span></div></div>
+          <output id="battEffOut"></output></div>
+        <div class="pills" data-for="battEff"><button class="chip" data-v="0.7">NiMH 70 %</button><button class="chip" data-v="0.8">Lead-acid 80 %</button><button class="chip" data-v="0.92">Li-ion 92 %</button><button class="chip" data-v="0.95">LiFePO₄ 95 %</button></div>
+        </details>
+      </div>
+      <div class="tiles">
+        <div class="tile hero"><div class="label">Days fully powered</div><div class="value"><span id="simDays">–</span><small>of 365</small></div></div>
+        <div class="tile"><div class="label">Hours without power</div><div class="value"><span id="simHours">–</span><small>per year</small></div></div>
+        <div class="tile"><div class="label">Usable battery reserve</div><div class="value"><span id="simReserve">–</span><small id="simReserveU"></small></div><div class="hint" id="simAutonomy"></div></div>
+        <div class="tile"><div class="label">Production not used</div><div class="value"><span id="simSurplus">–</span><small>%</small></div><div class="hint">Battery full, load met</div></div>
+      </div>
+    </div>
+    <div class="simcharts">
+      <div><div class="hint" style="margin-bottom:4px">Monthly energy balance</div><div class="chartbox"><canvas id="simMonthly"></canvas></div></div>
+      <div><div class="hint" style="margin-bottom:4px">Battery state of charge through the year</div><div class="chartbox"><canvas id="simSoc"></canvas></div></div>
+    </div>
+    <details><summary>Show monthly table</summary><table id="simTable"></table></details>
+  </section>
+
+  <section class="card full collapsible" id="costCard">
+    <div class="row cardhead" style="align-items:baseline"><h2 title="Click to collapse or expand">Cost &amp; return</h2><label class="hint" style="margin-left:auto">Currency <select id="currency" title="Currency for prices and costs"><option value="0">£</option><option value="1">$</option><option value="2">€</option><option value="3">🪙</option></select></label></div>
+    <p class="hint" style="margin:0 0 10px">Hourly import and export prices, what the panels and battery cost, and what the system saves over its life. Prices in <span class="sub">p</span> per kWh, costs in <span class="cur">£</span>. Hours are in solar time: UK clock time is about the same in winter and one hour later in summer.</p>
+    <div class="sim">
+      <div>
+        <div class="row"><strong>Import price</strong><span class="hint">What you pay, <span class="sub">p</span>/kWh. Drag across the bars to set each hour.</span>
+          <select id="impPreset" class="pricePreset" style="margin-left:auto" title="Typical UK import tariffs"><option value="">Preset…</option></select></div>
+        <div class="loadwrap"><canvas id="impEd" class="priceEd"></canvas><div id="imptip"></div></div>
+        <div class="row"><label>Average <input type="text" id="impAvg" style="width:80px"> <span class="sub">p</span>/kWh</label><button id="impFlat" title="Set every hour to this value">Flatten</button><span class="hint" id="impNote">Editing the average scales the whole day.</span></div>
+        <div class="row" style="margin-top:14px"><strong>Export price (SEG)</strong><span class="hint">What you are paid, <span class="sub">p</span>/kWh.</span>
+          <select id="expPreset" class="pricePreset" style="margin-left:auto" title="Typical UK export tariffs"><option value="">Preset…</option></select></div>
+        <div class="loadwrap"><canvas id="expEd" class="priceEd"></canvas><div id="exptip"></div></div>
+        <div class="row"><label>Average <input type="text" id="expAvg" style="width:80px"> <span class="sub">p</span>/kWh</label><button id="expFlat" title="Set every hour to this value">Flatten</button><span class="hint" id="expNote"></span></div>
+      </div>
+      <div class="tiles">
+        <div class="tile hero"><div class="label">Annual saving</div><div class="value"><span id="cSaving">–</span><small>/yr</small></div><div class="hint" id="cSavingNote"></div></div>
+        <div class="tile"><div class="label">Payback, solar + battery</div><div class="value"><span id="cPayback">–</span><small>years</small></div><div class="hint" id="cPaybackNote"></div></div>
+        <div class="tile"><div class="label">Bill with system</div><div class="value"><span id="cBill">–</span><small>/yr</small></div><div class="hint" id="cBillNote"></div></div>
+        <div class="tile"><div class="label">Export income</div><div class="value"><span id="cExport">–</span><small>/yr</small></div><div class="hint" id="cExportNote"></div></div>
+        <div class="tile"><div class="label">Self-sufficiency</div><div class="value"><span id="cSelf">–</span><small>%</small></div><div class="hint" id="cSelfNote"></div></div>
+        <div class="tile"><div class="label">Annualised return</div><div class="value"><span id="cRoi">–</span><small>%</small></div><div class="hint" id="cRoiNote"></div></div>
+        <div class="tile"><div class="label">Net after horizon</div><div class="value"><span id="cNet">–</span></div><div class="hint" id="cNetNote"></div></div>
+      </div>
+      <details class="battery adv" id="advCost"><summary>Advanced</summary>
+        <div class="ctl wide"><label for="solarCost">Solar cost</label><div class="row"><span class="cur">£</span> <input type="number" id="solarCost" min="0" step="100" style="width:110px"><span class="hint" id="solarCostNote"></span></div></div>
+        <div class="ctl wide"><label for="battCost">Battery cost</label><div class="row"><span class="cur">£</span> <input type="number" id="battCost" min="0" step="100" style="width:110px"><span class="hint" id="battCostNote"></span></div></div>
+        <div class="ctl wide"><label for="gridCharge">Grid charging</label><div class="row"><label><input type="checkbox" id="gridCharge"> Charge the battery from the grid when the import price is at or below</label><input type="number" id="cheapBelow" min="0" step="0.5" style="width:80px"> <span class="sub">p</span>/kWh <span class="hint" id="gridNote"></span></div></div>
+        <div class="ctl wide"><label for="standing">Standing charge</label><div class="row"><input type="number" id="standing" min="0" step="0.5" style="width:90px"> <span class="sub">p</span> per day <span class="hint">the fixed daily charge on the bill; import presets fill it in</span></div></div>
+        <div class="ctl wide"><label for="inflation">Price inflation</label><div class="row"><input type="number" id="inflation" min="-10" max="30" step="0.5" style="width:80px"> % per year <span class="hint">applied to both import and export prices</span></div></div>
+        <div class="ctl wide"><label for="horizon">Horizon</label><div class="row"><input type="number" id="horizon" min="1" max="40" step="1" style="width:80px"> years <span class="hint">system life for the cash-flow chart; no replacement or degradation is modelled</span></div></div>
+      </details>
+    </div>
+    <div class="simcharts">
+      <div><div class="hint" style="margin-bottom:4px">Monthly electricity bill</div><div class="chartbox"><canvas id="costMonthly"></canvas></div></div>
+      <div><div class="hint" style="margin-bottom:4px">Cumulative cash flow</div><div class="chartbox"><canvas id="costFlow"></canvas></div></div>
+    </div>
+    <details><summary>Show monthly table</summary><table id="costTable"></table></details>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  const DEG = Math.PI / 180;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ---------- state ----------
+  // System size is stored in kWp; the slider works in the unit the user picked by clicking the value.
+  const SIZE_UNITS = [
+    { u: 'Wp',  f: 1e-3, min: 1, max: 20, step: 0.5, dec: 1 },
+    { u: 'kWp', f: 1,    min: 1, max: 20, step: 0.5, dec: 1 },
+    { u: 'MWp', f: 1e3,  min: 1, max: 20, step: 0.5, dec: 1 },
+    { u: 'GWp', f: 1e6,  min: 1, max: 20, step: 0.5, dec: 1 },
+  ];
+  // The draw profile is stored in watts (state.loadW) and edited in the unit the user picks (state.loadUnit).
+  const LOAD_UNITS = [{ u: 'µW', f: 1e-6 }, { u: 'mW', f: 1e-3 }, { u: 'W', f: 1 }, { u: 'kW', f: 1e3 }, { u: 'MW', f: 1e6 }, { u: 'GW', f: 1e9 }];
+  const defaults = { lat: 55.676, lon: 12.568, tilt: 35, az: 180, kwp: 5, pr: 0.8, clear: 0.65, albedo: 0.2, layer: 'Map', clearAuto: true, climate: null, sizeUnit: 1,
+    loadW: [300, 250, 250, 250, 250, 300, 600, 800, 500, 400, 400, 450, 500, 400, 400, 450, 600, 1000, 1400, 1300, 1000, 700, 500, 350], loadUnit: 3,
+    noBatt: false, battN: 1, battCap: 200, battCapUnit: 'Ah', battV: 48, dod: 0.8, battEff: 0.9,
+    priceImp: new Array(24).fill(25), priceExp: new Array(24).fill(15), solarCost: null, battCost: null, battChargeW: null, battDischargeW: null,
+    gridCharge: false, cheapBelow: 10, standing: 54, inflation: 3, horizon: 25, currency: 0 };
+  let state = Object.assign({}, defaults);
+  const sizeUnit = () => SIZE_UNITS[state.sizeUnit] || SIZE_UNITS[1];
+  const loadUnit = () => LOAD_UNITS[state.loadUnit] || LOAD_UNITS[2];
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('solar-state') || '{}'); } catch (e) {}
+  // migrate earlier saved states: draw was stored in the size unit, battery only in Ah
+  if (saved.load && !saved.loadW) {
+    const f = (SIZE_UNITS[saved.sizeUnit] || SIZE_UNITS[1]).f;
+    saved.loadW = saved.load.map((v) => v * f * 1000); saved.loadUnit = Math.min(5, (saved.sizeUnit == null ? 1 : saved.sizeUnit) + 2);
+  }
+  if (saved.battAh != null && saved.battCap == null) { saved.battCap = saved.battAh; saved.battCapUnit = 'Ah'; }
+  if (saved.battPower != null && saved.battChargeW == null) { saved.battChargeW = saved.battDischargeW = saved.battPower * 1000; }
+  delete saved.load; delete saved.battAh; delete saved.battPower;
+  Object.assign(state, saved);
+
+  // ---------- shareable URL ----------
+  function toQuery() {
+    const p = new URLSearchParams(), su = sizeUnit();
+    p.set('lat', state.lat.toFixed(4)); p.set('lon', state.lon.toFixed(4));
+    p.set('tilt', state.tilt); p.set('az', state.az);
+    p.set('size', +(state.kwp / su.f).toPrecision(4) + su.u);
+    p.set('eff', state.pr); p.set('clear', state.clear); if (!state.clearAuto) p.set('manual', '1');
+    p.set('alb', state.albedo); if (state.layer === 'Satellite') p.set('sat', '1');
+    p.set('draw', state.loadW.map((w) => +w.toPrecision(4)).join(',')); p.set('du', loadUnit().u.replace('µ', 'u'));
+    p.set('batt', +state.battCap.toPrecision(5) + state.battCapUnit); p.set('v', state.battV); if (state.battN > 1) p.set('bn', state.battN); if (state.noBatt) p.set('nb', '1');
+    p.set('dod', state.dod); p.set('beff', state.battEff);
+    p.set('pi', state.priceImp.map((v) => +v.toFixed(2)).join(',')); p.set('pe', state.priceExp.map((v) => +v.toFixed(2)).join(','));
+    if (state.solarCost != null) p.set('sc', state.solarCost); if (state.battCost != null) p.set('bc', state.battCost); if (state.battChargeW != null) p.set('bcw', +state.battChargeW.toPrecision(5)); if (state.battDischargeW != null) p.set('bdw', +state.battDischargeW.toPrecision(5));
+    if (state.gridCharge) p.set('gc', '1'); p.set('cb', state.cheapBelow); p.set('st', state.standing); p.set('inf', state.inflation); p.set('yrs', state.horizon); if (state.currency) p.set('cur', state.currency);
+    return p.toString();
+  }
+  function fromQuery(qs) {
+    const p = new URLSearchParams(qs);
+    if (!p.has('lat')) return false;
+    const num = (k, lo, hi) => { const v = parseFloat(p.get(k)); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null; };
+    const set = (k, v) => { if (v !== null) state[k] = v; };
+    set('lat', num('lat', -90, 90)); set('lon', num('lon', -180, 180)); set('tilt', num('tilt', 0, 90)); set('az', num('az', 0, 359));
+    const size = (p.get('size') || '').match(/^([\d.]+)(Wp|kWp|MWp|GWp)$/);
+    if (size) { state.sizeUnit = SIZE_UNITS.findIndex((u) => u.u === size[2]); state.kwp = parseFloat(size[1]) * sizeUnit().f; }
+    set('pr', num('eff', 0.5, 1)); set('clear', num('clear', 0.3, 1)); state.clearAuto = !p.has('manual');
+    set('albedo', num('alb', 0, 0.9)); state.layer = p.has('sat') ? 'Satellite' : 'Map';
+    const draw = (p.get('draw') || '').split(',').map(Number);
+    if (draw.length === 24 && draw.every((v) => isFinite(v) && v >= 0)) state.loadW = draw;
+    const du = LOAD_UNITS.findIndex((u) => u.u.replace('µ', 'u') === p.get('du')); if (du >= 0) state.loadUnit = du;
+    state.battN = Math.max(1, Math.round(num('bn', 1, 1e6) || 1)); state.noBatt = p.has('nb');
+    const batt = (p.get('batt') || '').match(/^([\d.]+)(mAh|Ah|Wh)$/);
+    if (batt) { state.battCap = parseFloat(batt[1]); state.battCapUnit = batt[2]; }
+    set('battV', num('v', 0.1, 1e6)); set('dod', num('dod', 0.2, 1)); set('battEff', num('beff', 0.5, 1));
+    for (const [k, key] of [['pi', 'priceImp'], ['pe', 'priceExp']]) {
+      const a = (p.get(k) || '').split(',').map(Number);
+      if (a.length === 24 && a.every((v) => isFinite(v) && v >= 0)) state[key] = a;
+    }
+    if (p.has('sc')) set('solarCost', num('sc', 0, 1e12)); if (p.has('bc')) set('battCost', num('bc', 0, 1e12)); if (p.has('bp')) { const w = num('bp', 0, 1e9) * 1000; state.battChargeW = w; state.battDischargeW = w; }
+    if (p.has('bcw')) set('battChargeW', num('bcw', 0, 1e12)); if (p.has('bdw')) set('battDischargeW', num('bdw', 0, 1e12));
+    state.gridCharge = p.has('gc'); set('cheapBelow', num('cb', 0, 1e4)); set('standing', num('st', 0, 1e5)); set('inflation', num('inf', -10, 30)); set('horizon', num('yrs', 1, 40)); set('currency', num('cur', 0, 3));
+    return true;
+  }
+  fromQuery(location.search);
+  let urlTimer = null;
+  function syncUrl() { try { history.replaceState(null, '', location.pathname + '?' + toQuery()); } catch (e) {} }
+  function save() {
+    try { localStorage.setItem('solar-state', JSON.stringify(state)); } catch (e) {}
+    clearTimeout(urlTimer); urlTimer = setTimeout(syncUrl, 300);
+  }
+
+  // ---------- solar model ----------
+  function declination(n) { return 23.45 * DEG * Math.sin(2 * Math.PI * (284 + n) / 365); }
+
+  // Clear-sky irradiance for a given sun elevation (sinA), day n and clearness k.
+  // Returns [DNI, DHI, GHI] in W/m².
+  function irradiance(sa, n, k) {
+    const I0 = 1361 * (1 + 0.033 * Math.cos(2 * Math.PI * n / 365));
+    const z = Math.acos(sa) / DEG;
+    const am = 1 / (sa + 0.50572 * Math.pow(96.07995 - z, -1.6364));   // Kasten-Young air mass
+    let b = I0 * Math.pow(0.7, Math.pow(am, 0.678));                    // Meinel clear-sky DNI
+    let g = 1098 * sa * Math.exp(-0.059 / sa);                          // Haurwitz clear-sky GHI
+    if (b * sa > g) b = g / sa;
+    b *= Math.pow(k, 1.5); g *= k;                                      // clouds: beam attenuates faster than global
+    return [b, Math.max(0, g - b * sa), g];
+  }
+
+  // Sun elevation sine and azimuth (radians, 0 = N clockwise) for latitude terms and hour angle w.
+  function sunPos(sp, cp, sd, cd, td, w) {
+    const sa = sp * sd + cp * cd * Math.cos(w);
+    const azS = Math.atan2(Math.sin(w), Math.cos(w) * sp - td * cp) + Math.PI;
+    return [sa, azS];
+  }
+
+  // Effective clearness per month: the site's monthly profile scaled so its annual value equals the slider,
+  // or a flat value when no site data is available.
+  function kByMonth() {
+    const c = state.climate;
+    if (!c || !c.months) return new Array(12).fill(state.clear);
+    return c.months.map((k) => Math.min(1, Math.max(0.05, k * state.clear / c.avg)));
+  }
+
+  // Build daylight samples for a latitude, with irradiance already scaled by per-month clearness kArr.
+  function buildSamples(lat, kArr, dayStep, minStep) {
+    const phi = lat * DEG, sp = Math.sin(phi), cp = Math.cos(phi);
+    const sinA = [], cx = [], cy = [], dni = [], dhi = [], ghi = [], month = [];
+    const stepsPerDay = Math.round(1440 / minStep);
+    for (let n = 1; n <= 365; n += dayStep) {
+      const d = declination(n), sd = Math.sin(d), cd = Math.cos(d), td = Math.tan(d);
+      const m = new Date(2025, 0, n).getMonth();
+      for (let i = 0; i < stepsPerDay; i++) {
+        const t = (i + 0.5) * minStep / 60;           // solar hours
+        const w = (t - 12) * 15 * DEG;                // hour angle
+        const [sa, azS] = sunPos(sp, cp, sd, cd, td, w);
+        if (sa <= 0.01) continue;
+        const ca = Math.sqrt(1 - sa * sa);
+        const [b, dh, g] = irradiance(sa, n, kArr[m]);
+        sinA.push(sa); cx.push(ca * Math.cos(azS)); cy.push(ca * Math.sin(azS));
+        dni.push(b); dhi.push(dh); ghi.push(g); month.push(m);
+      }
+    }
+    const f = (a) => Float64Array.from(a);
+    return { sinA: f(sinA), cx: f(cx), cy: f(cy), dni: f(dni), dhi: f(dhi), ghi: f(ghi), month: Int8Array.from(month),
+             scale: (minStep / 60) * dayStep / 1000, n: sinA.length };  // W/m² x hours -> kWh/m²
+  }
+
+  // Annual plane-of-array energy, kWh per m² (multiply by kWp × efficiency for system kWh).
+  function annual(s, tilt, az, albedo, perMonth) {
+    const b = tilt * DEG, cb = Math.cos(b), sb = Math.sin(b), ca = Math.cos(az * DEG), sa = Math.sin(az * DEG);
+    const fd = (1 + cb) / 2, fg = albedo * (1 - cb) / 2;
+    let sum = 0;
+    const { sinA, cx, cy, dni, dhi, ghi, month, n } = s;
+    for (let i = 0; i < n; i++) {
+      let ct = sinA[i] * cb + sb * (cx[i] * ca + cy[i] * sa);
+      if (ct < 0) ct = 0;
+      const poa = dni[i] * ct + dhi[i] * fd + ghi[i] * fg;
+      sum += poa;
+      if (perMonth) perMonth[month[i]] += poa * s.scale;
+    }
+    return sum * s.scale;
+  }
+
+  // Returns a function giving system power (kW) at solar time t (hours) on day n.
+  function dayPower(lat, n, tilt, az, kArr, albedo, kwp, pr) {
+    const k = kArr[new Date(2025, 0, n).getMonth()];
+    const phi = lat * DEG, sp = Math.sin(phi), cp = Math.cos(phi);
+    const d = declination(n), sd = Math.sin(d), cd = Math.cos(d), td = Math.tan(d);
+    const b = tilt * DEG, cb = Math.cos(b), sb = Math.sin(b), cpa = Math.cos(az * DEG), spa = Math.sin(az * DEG);
+    return (t) => {
+      const w = (t - 12) * 15 * DEG;
+      const [sa, azS] = sunPos(sp, cp, sd, cd, td, w);
+      if (sa <= 0.01) return 0;
+      const ca = Math.sqrt(1 - sa * sa);
+      const [bn, dh, g] = irradiance(sa, n, k);
+      const ct = Math.max(0, sa * cb + sb * ca * (Math.cos(azS) * cpa + Math.sin(azS) * spa));
+      return (bn * ct + dh * (1 + cb) / 2 + g * albedo * (1 - cb) / 2) / 1000 * kwp * pr;
+    };
+  }
+
+  // Power profile (kW) across one day n for the current system, every 10 minutes.
+  function dayProfile(lat, n, tilt, az, kArr, albedo, kwp, pr) {
+    const p = dayPower(lat, n, tilt, az, kArr, albedo, kwp, pr), out = [];
+    for (let m = 0; m <= 1440; m += 10) out.push({ x: m / 60, y: p(m / 60) });
+    return out;
+  }
+
+  // ---------- grid / optimum ----------
+  const T_STEP = 2, A_STEP = 5;
+  const TILTS = [], AZS = [];
+  for (let t = 0; t <= 90; t += T_STEP) TILTS.push(t);
+  for (let a = 0; a < 360; a += A_STEP) AZS.push(a);
+  let grid = null, gridMax = 0, opt = { tilt: 0, az: 0, kwhm2: 0 };
+  let coarse = null, fine = null;
+
+  function recomputeGrid() {
+    const kArr = kByMonth();
+    coarse = buildSamples(state.lat, kArr, 3, 15);
+    fine = buildSamples(state.lat, kArr, 1, 10);
+    grid = new Float64Array(TILTS.length * AZS.length);
+    gridMax = 0; let bi = 0;
+    for (let ti = 0; ti < TILTS.length; ti++) for (let ai = 0; ai < AZS.length; ai++) {
+      const v = annual(coarse, TILTS[ti], AZS[ai], state.albedo);
+      const idx = ti * AZS.length + ai;
+      grid[idx] = v;
+      if (v > gridMax) { gridMax = v; bi = idx; }
+    }
+    // refine the optimum to 1° using the fine sample set
+    const bt = TILTS[Math.floor(bi / AZS.length)], ba = AZS[bi % AZS.length];
+    let best = -1;
+    for (let t = Math.max(0, bt - T_STEP); t <= Math.min(90, bt + T_STEP); t++)
+      for (let a = ba - A_STEP; a <= ba + A_STEP; a++) {
+        const az = (a + 360) % 360;
+        const v = annual(fine, t, az, state.albedo);
+        if (v > best) { best = v; opt = { tilt: t, az: az, kwhm2: v }; }
+      }
+    opt.peak = peakPoa(fine, opt.tilt, opt.az, state.albedo);
+  }
+
+  // Highest instantaneous plane-of-array irradiance (W/m²) over the year for an orientation.
+  function peakPoa(s, tilt, az, albedo) {
+    const b = tilt * DEG, cb = Math.cos(b), sb = Math.sin(b), ca = Math.cos(az * DEG), sa = Math.sin(az * DEG);
+    const fd = (1 + cb) / 2, fg = albedo * (1 - cb) / 2;
+    let mx = 0;
+    for (let i = 0; i < s.n; i++) {
+      const ct = Math.max(0, s.sinA[i] * cb + sb * (s.cx[i] * ca + s.cy[i] * sa));
+      const poa = s.dni[i] * ct + s.dhi[i] * fd + s.ghi[i] * fg;
+      if (poa > mx) mx = poa;
+    }
+    return mx;
+  }
+
+  // ---------- UI: sliders ----------
+  const $ = (id) => document.getElementById(id);
+  function applySizeUnit() { const u = sizeUnit(), el = $('kwp'); el.min = u.min; el.max = u.max; el.step = u.step; }
+  const ident = (v) => v;
+  const sliders = {
+    tilt:   { fmt: (v) => v + '°' },
+    az:     { fmt: (v) => v + '° ' + compassName(v) },
+    kwp:    { fmt: (v) => (v / sizeUnit().f).toFixed(sizeUnit().dec) + ' ' + sizeUnit().u, toSlider: (v) => v / sizeUnit().f, fromSlider: (v) => v * sizeUnit().f },
+    pr:     { fmt: (v) => Math.round(v * 100) + ' %' },
+    clear:  { fmt: (v) => Math.round(v * 100) + ' %' },
+    albedo: { fmt: (v) => v.toFixed(2) },
+    dod:    { fmt: (v) => Math.round(v * 100) + ' %' },
+    battEff: { fmt: (v) => Math.round(v * 100) + ' %' },
+  };
+  function compassName(a) {
+    const names = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return names[Math.round(a / 22.5) % 16];
+  }
+  applySizeUnit();
+  for (const id in sliders) {
+    const el = $(id);
+    el.value = (sliders[id].toSlider || ident)(state[id]);
+    $(id + 'Out').textContent = sliders[id].fmt(state[id]);
+    el.addEventListener('input', () => {
+      state[id] = (sliders[id].fromSlider || ident)(parseFloat(el.value));
+      $(id + 'Out').textContent = sliders[id].fmt(state[id]);
+      if (id === 'clear') { state.clearAuto = !!state.climate && Math.abs(state.clear - state.climate.avg) < 0.005; updateClearMark(); }
+      if (id in RESET_NOTES) updateResetNote(id);
+      updatePills();
+      save();
+      if (id === 'clear' || id === 'albedo') recomputeGrid();
+      updateOutputs();
+    });
+  }
+  // Sliders with a sensible default: offer a way back once the value has been changed.
+  const RESET_NOTES = { pr: null, albedo: null };
+  function updateResetNote(id) {
+    const note = $(id + 'Note');
+    if (Math.abs(state[id] - defaults[id]) < 0.005) { note.textContent = ''; return; }
+    note.innerHTML = 'Manual value. <a id="' + id + 'Reset">Reset to default (' + sliders[id].fmt(defaults[id]) + ')</a>';
+    $(id + 'Reset').addEventListener('click', () => { const el = $(id); el.value = defaults[id]; el.dispatchEvent(new Event('input')); });
+  }
+  for (const id in RESET_NOTES) updateResetNote(id);
+
+  // Preset pills under a slider: click sets the slider, the matching pill is highlighted.
+  function updatePills() {
+    document.querySelectorAll('.pills[data-for]').forEach((row) => {
+      const v = parseFloat($(row.dataset.for).value);
+      row.querySelectorAll('.chip').forEach((b) => b.classList.toggle('on', Math.abs(parseFloat(b.dataset.v) - v) < 1e-9));
+    });
+  }
+  document.querySelectorAll('.pills[data-for]').forEach((row) => row.addEventListener('click', (e) => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const el = $(row.dataset.for); el.value = b.dataset.v; el.dispatchEvent(new Event('input'));
+  }));
+  updatePills();
+
+  // Click the size value to cycle the unit; the number stays, the unit changes.
+  $('kwpOut').addEventListener('click', () => {
+    const n = parseFloat($('kwp').value);
+    state.sizeUnit = (state.sizeUnit + 1) % SIZE_UNITS.length;
+    const u = sizeUnit(); applySizeUnit();
+    const v = Math.min(u.max, Math.max(u.min, Math.round(n / u.step) * u.step));
+    $('kwp').value = v; state.kwp = v * u.f;
+    $('kwpOut').textContent = sliders.kwp.fmt(state.kwp);
+    save(); updateOutputs();
+  });
+
+  // ---------- output units (scale kWh -> MWh -> GWh -> TWh, kW -> MW -> GW -> TW) ----------
+  // Values are computed in kWh / kW and shown in the unit matching the system size: Wp -> Wh/W, kWp -> kWh/kW, MWp -> MWh/MW, GWp -> GWh/GW.
+  const E_UNITS = ['Wh', 'kWh', 'MWh', 'GWh'], P_UNITS = ['W', 'kW', 'MW', 'GW'];
+  const unitIdx = () => state.sizeUnit;
+  const unitDiv = (i) => Math.pow(1000, i - 1);   // divisor to apply to a kWh / kW value for unit index i
+  function fmtNum(v) { return v >= 100 ? Math.round(v).toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: v >= 10 ? 1 : 2 }); }
+  function fmtE(kwh) { const i = unitIdx(kwh); return fmtNum(kwh / unitDiv(i)) + ' ' + E_UNITS[i]; }
+  let eUnit = 'kWh', pUnit = 'kW';
+
+  // ---------- site climate (NASA POWER monthly irradiance climatology) ----------
+  const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  // nasa: 12 monthly all-sky horizontal irradiance values, kWh/m²/day. Returns per-month clearness
+  // relative to this app's clear-sky model, plus the energy-weighted annual value.
+  function deriveClimate(lat, nasa) {
+    const s = buildSamples(lat, new Array(12).fill(1), 1, 10);
+    const clearM = new Array(12).fill(0);
+    for (let i = 0; i < s.n; i++) clearM[s.month[i]] += s.ghi[i] * s.scale;     // clear-sky kWh/m² per month
+    const months = nasa.map((v, m) => Math.min(1, Math.max(0.2, v * DAYS[m] / Math.max(1e-6, clearM[m]))));
+    let num = 0, den = 0;
+    for (let m = 0; m < 12; m++) { num += nasa[m] * DAYS[m]; den += clearM[m]; }
+    return { months, avg: Math.round(Math.min(1, Math.max(0.3, num / den)) * 100) / 100 };
+  }
+  let climateReq = null, climateTimer = null;
+  function climateMatches() { const c = state.climate; return !!c && Math.abs(c.lat - state.lat) < 1e-4 && Math.abs(c.lon - state.lon) < 1e-4; }
+  function fetchClimate() {
+    clearTimeout(climateTimer);
+    climateTimer = setTimeout(async () => {
+      if (climateReq) climateReq.abort();
+      const ctrl = climateReq = new AbortController();
+      const lat = state.lat, lon = state.lon;
+      $('climateNote').textContent = 'Fetching site climate from NASA POWER…';
+      try {
+        const url = 'https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN&community=RE&format=JSON&latitude=' + lat.toFixed(4) + '&longitude=' + lon.toFixed(4);
+        const j = await (await fetch(url, { signal: ctrl.signal })).json();
+        const p = j.properties.parameter.ALLSKY_SFC_SW_DWN;
+        const nasa = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].map((k) => p[k]);
+        if (nasa.some((v) => !(v >= 0))) throw new Error('no data');
+        const c = deriveClimate(lat, nasa);
+        state.climate = { lat, lon, months: c.months, avg: c.avg, ghi: Math.round(p.ANN * 365) };
+        if (state.clearAuto) setClear(c.avg, true); else { save(); recomputeGrid(); updateOutputs(); updateClearMark(); }
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        if (!climateMatches()) { state.climate = null; save(); recomputeGrid(); updateOutputs(); }
+        updateClearMark();
+        $('climateNote').textContent = 'Could not fetch site climate (offline?). ' + $('climateNote').textContent;
+      }
+    }, 400);
+  }
+  function setClear(v, auto) {
+    state.clear = v; state.clearAuto = auto; save();
+    $('clear').value = v; $('clearOut').textContent = sliders.clear.fmt(v);
+    recomputeGrid(); updateOutputs(); updateClearMark();
+  }
+  function updateClearMark() {
+    const c = state.climate, pop = $('clearPop'), note = $('climateNote');
+    const pc = (v) => Math.round(v * 100) + ' %';
+    if (!c) {
+      note.textContent = 'No site data: the same clearness is applied to every month.';
+      pop.innerHTML = '<b>Sky clearness</b><br>Fraction of clear-sky sunlight reaching the ground, after clouds. ' +
+        '<span class="dim">No site data could be fetched, so this value is applied flat to every month.</span>';
+      return;
+    }
+    note.innerHTML = state.clearAuto ? '' : 'Manual value. <a id="clearReset">Reset to site estimate (' + pc(c.avg) + ')</a>';
+    const kArr = kByMonth(), mx = Math.max(...kArr);
+    pop.innerHTML =
+      '<b>Sky clearness</b><br>' +
+      (state.clearAuto
+        ? 'Using the site estimate of <b>' + pc(c.avg) + '</b>.'
+        : 'Set manually to <b>' + pc(state.clear) + '</b>; the site estimate is ' + pc(c.avg) + '.') +
+      '<br><span class="dim">Source: NASA POWER 2001–2020 monthly irradiance climatology for this point (' + c.ghi.toLocaleString() +
+      ' kWh/m² per year on the horizontal), divided by this app\'s clear-sky model.</span>' +
+      '<div class="bars">' + kArr.map((k) => '<i style="height:' + Math.round(k / mx * 100) + '%" title="' + pc(k) + '"></i>').join('') + '</div>' +
+      '<div class="months"><span>Jan</span><span>Dec</span></div>' +
+      '<span class="dim">Clearness between ' + Math.round(Math.min(...kArr) * 100) + '-' + Math.round(mx * 100) + '% over the year.</span>' +
+      (state.clearAuto ? '' : '<br><button type="button" id="clearReset2">Reset to site estimate</button>');
+    for (const id of ['clearReset', 'clearReset2']) { const r = $(id); if (r) r.addEventListener('click', () => setClear(c.avg, true)); }
+  }
+  $('optBtn').addEventListener('click', () => setOrientation(opt.tilt, opt.az));
+  function setOrientation(t, a) {
+    state.tilt = t; state.az = a; save();
+    $('tilt').value = t; $('az').value = a;
+    $('tiltOut').textContent = sliders.tilt.fmt(t);
+    $('azOut').textContent = sliders.az.fmt(a);
+    updateOutputs();
+  }
+
+  // ---------- UI: map ----------
+  const map = L.map('map').setView([state.lat, state.lon], 5);
+  const baseLayers = {
+    'Map': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }),
+    'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }),
+  };
+  const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, pane: 'overlayPane' });
+  (baseLayers[state.layer] || baseLayers['Map']).addTo(map);
+  if (state.layer === 'Satellite') labels.addTo(map);
+  L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+  map.on('baselayerchange', (e) => {
+    state.layer = e.name; save();
+    if (e.name === 'Satellite') labels.addTo(map); else map.removeLayer(labels);
+  });
+  const marker = L.marker([state.lat, state.lon], { draggable: true }).addTo(map);
+  marker.on('dragend', () => { const p = marker.getLatLng(); setLocation(p.lat, p.lng, false); });
+  map.on('click', (e) => setLocation(e.latlng.lat, e.latlng.lng, false));
+  // Azimuth arrow anchored at the marker: fixed screen length, drag the tip to rotate.
+  const ARROW_PX = 80;
+  const arrowLine = L.polyline([], { color: css('--s1'), weight: 3, interactive: false }).addTo(map);
+  const arrowHead = L.polyline([], { color: css('--s1'), weight: 3, interactive: false }).addTo(map);
+  const planeLine = L.polyline([], { color: '#fff', weight: 2, dashArray: '5 5', opacity: .9, interactive: false }).addTo(map);
+  const azTip = L.marker([state.lat, state.lon], { draggable: true, zIndexOffset: 1000, title: 'Drag to set direction',
+    icon: L.divIcon({ className: 'az-handle', iconSize: [16, 16], iconAnchor: [8, 8] }) }).addTo(map);
+  let draggingTip = false;
+  function drawArrow() {
+    const p0 = map.latLngToContainerPoint(marker.getLatLng());
+    const a = state.az * DEG, dx = Math.sin(a), dy = -Math.cos(a);        // screen up = north in Web Mercator
+    const p1 = L.point(p0.x + dx * ARROW_PX, p0.y + dy * ARROW_PX);
+    const px = -dy, py = dx;                                                // perpendicular (panel plane / roof ridge)
+    const toLL = (x, y) => map.containerPointToLatLng(L.point(x, y));
+    arrowLine.setLatLngs([toLL(p0.x, p0.y), toLL(p1.x, p1.y)]);
+    arrowHead.setLatLngs([toLL(p1.x - dx * 12 + px * 7, p1.y - dy * 12 + py * 7), toLL(p1.x, p1.y), toLL(p1.x - dx * 12 - px * 7, p1.y - dy * 12 - py * 7)]);
+    planeLine.setLatLngs([toLL(p0.x - px * 40, p0.y - py * 40), toLL(p0.x + px * 40, p0.y + py * 40)]);
+    if (!draggingTip) azTip.setLatLng(toLL(p1.x, p1.y));
+  }
+  azTip.on('dragstart', () => { draggingTip = true; });
+  azTip.on('drag', () => {
+    const p0 = map.latLngToContainerPoint(marker.getLatLng()), p = map.latLngToContainerPoint(azTip.getLatLng());
+    const dx = p.x - p0.x, dy = p.y - p0.y;
+    if (Math.hypot(dx, dy) > 5) setOrientation(state.tilt, (Math.round(Math.atan2(dx, -dy) / DEG) + 360) % 360);
+  });
+  azTip.on('dragend', () => { draggingTip = false; drawArrow(); });
+  map.on('zoom move zoomend moveend', drawArrow);
+  function setLocation(lat, lon, pan) {
+    lon = ((lon + 540) % 360) - 180;
+    state.lat = lat; state.lon = lon; save();
+    marker.setLatLng([lat, lon]);
+    if (pan) map.panTo([lat, lon]);
+    recomputeGrid(); updateOutputs();
+    fetchClimate();
+  }
+
+  async function search() {
+    const q = $('search').value.trim();
+    if (!q) return;
+    $('status').textContent = 'Searching…';
+    try {
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });
+      const j = await r.json();
+      if (!j.length) { $('status').textContent = 'No results for "' + q + '".'; return; }
+      $('status').textContent = j[0].display_name;
+      setLocation(parseFloat(j[0].lat), parseFloat(j[0].lon), true);
+      map.setZoom(10);
+    } catch (e) { $('status').textContent = 'Search failed (network?).'; }
+  }
+  $('searchBtn').addEventListener('click', search);
+  $('copyBtn').addEventListener('click', async () => {
+    syncUrl();
+    const note = $('shareNote');
+    try { await navigator.clipboard.writeText(location.href); note.textContent = 'Link copied'; }
+    catch (e) { note.textContent = 'Copy the address bar to share'; }
+    clearTimeout(note._t); note._t = setTimeout(() => { note.textContent = ''; }, 2500);
+  });
+  $('roofBtn').addEventListener('click', () => {
+    if (!map.hasLayer(baseLayers['Satellite'])) { map.removeLayer(baseLayers['Map']); baseLayers['Satellite'].addTo(map); }
+    map.setView(marker.getLatLng(), 19);
+  });
+  $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+  $('geoBtn').addEventListener('click', () => {
+    if (!navigator.geolocation) { $('status').textContent = 'Geolocation not available.'; return; }
+    $('status').textContent = 'Locating…';
+    navigator.geolocation.getCurrentPosition(
+      (p) => { $('status').textContent = 'Using your current position.'; setLocation(p.coords.latitude, p.coords.longitude, true); map.setZoom(11); },
+      () => { $('status').textContent = 'Could not get your position.'; });
+  });
+
+  // ---------- charts ----------
+  Chart.defaults.font.family = css('--sans');
+  Chart.defaults.color = css('--text-2');
+  const gridColor = css('--grid');
+  const legendOpts = { position: 'top', align: 'end', labels: { boxWidth: 10, boxHeight: 10, usePointStyle: true } };
+  // For charts whose fill is a translucent wash: legend and tooltip swatches use the line colour, not the wash.
+  const legendSolid = Object.assign({}, legendOpts, { labels: Object.assign({}, legendOpts.labels, {
+    generateLabels: (chart) => Chart.defaults.plugins.legend.labels.generateLabels(chart).map((l) => { l.fillStyle = l.strokeStyle; return l; }) }) });
+  const solidSwatch = (c) => ({ borderColor: c.dataset.borderColor, backgroundColor: c.dataset.borderColor });
+  // For charts whose dashed line changes colour along its length: a neutral grey legend swatch for that line.
+  const legendDashNeutral = Object.assign({}, legendOpts, { labels: Object.assign({}, legendOpts.labels, {
+    generateLabels: (chart) => Chart.defaults.plugins.legend.labels.generateLabels(chart).map((l) => {
+      if (chart.data.datasets[l.datasetIndex].borderDash) { l.fillStyle = css('--muted'); l.strokeStyle = css('--muted'); }
+      return l; }) }) });
+  const monthly = new Chart($('monthly'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Selected orientation', data: [], borderColor: css('--text'), backgroundColor: css('--text'), borderWidth: 3 },
+      { label: 'Optimal orientation', data: [], borderColor: css('--muted'), backgroundColor: css('--muted'), borderDash: [6, 4],
+        // red where the optimum is above the selected orientation (selected produces less), green where the selected orientation beats it
+        segment: { borderColor: (ctx) => { const sel = ctx.chart.data.datasets[0].data; return (ctx.p0.parsed.y + ctx.p1.parsed.y) > (sel[ctx.p0DataIndex] + sel[ctx.p1DataIndex]) ? '#e34948' : '#008300'; } },
+        pointBackgroundColor: (ctx) => !ctx.parsed ? css('--muted') : ctx.parsed.y > ctx.chart.data.datasets[0].data[ctx.dataIndex] ? '#e34948' : '#008300',
+        fill: { target: 0, above: 'rgba(227,73,72,.14)', below: 'rgba(0,131,0,.12)' } },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+      elements: { line: { borderWidth: 2, tension: 0.3, borderJoinStyle: 'round' }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card'), hoverBorderWidth: 1, hoverBorderColor: css('--card') } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: legendDashNeutral,
+        tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + fmtNum(c.parsed.y) + ' ' + eUnit } } },
+      scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false },
+        title: { display: true, text: 'kWh per month' }, ticks: { callback: (v) => v.toLocaleString() } } } }
+  });
+  const daily = new Chart($('daily'), {
+    type: 'line',
+    data: { datasets: [
+      { label: 'Best day', data: [], borderColor: '#008300', backgroundColor: 'rgba(0,131,0,.12)', borderDash: [6, 4], fill: { target: 1 } },   // green wash down to the average
+      { label: 'Average day', data: [], borderColor: css('--text'), backgroundColor: css('--text'), borderWidth: 3, fill: false },
+      { label: 'Worst day', data: [], borderColor: '#e34948', backgroundColor: 'rgba(227,73,72,.14)', borderDash: [6, 4], fill: { target: 1 } },   // red wash up to the average
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, parsing: false,
+      elements: { line: { borderWidth: 2, tension: 0.3, borderJoinStyle: 'round' }, point: { radius: 0, hoverRadius: 5, hoverBorderWidth: 2, hoverBorderColor: css('--card') } },
+      interaction: { mode: 'index', intersect: false, axis: 'x' },
+      plugins: { legend: legendSolid,
+        tooltip: { callbacks: { labelColor: solidSwatch, title: (items) => hourLabel(items[0].parsed.x), label: (c) => ' ' + c.dataset.label + ': ' + fmtNum(c.parsed.y) + ' ' + pUnit } } },
+      scales: { x: { type: 'linear', min: 0, max: 24, grid: { display: false }, ticks: { stepSize: 3, callback: (v) => hourLabel(v) } },
+        y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false }, title: { display: true, text: 'kW' } } } }
+  });
+  function hourLabel(h) { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); }
+
+  // ---------- heatmap ----------
+  const heat = $('heat'), hctx = heat.getContext('2d'), tip = $('heattip');
+  const PAD = { l: 40, r: 10, t: 8, b: 30 };
+  // Diverging scale: light red (worst) -> white (average of all orientations) -> dark green (best).
+  const RAMP_LOW = ['#ffffff', '#f3b5b3'], RAMP_HIGH = ['#ffffff', '#8fd18f', '#2e9e2e', '#0a5c0a'];
+  function hex(h) { return [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16)); }
+  function rampStops(stops, f) {
+    const x = Math.max(0, Math.min(1, f)) * (stops.length - 1), i = Math.floor(x), t = x - i;
+    const a = hex(stops[i]), b = hex(stops[Math.min(stops.length - 1, i + 1)]);
+    return 'rgb(' + a.map((c, k) => Math.round(c + (b[k] - c) * t)).join(',') + ')';
+  }
+  function rampColor(v, lo, mid, hi) { return v >= mid ? rampStops(RAMP_HIGH, (v - mid) / Math.max(1e-9, hi - mid)) : rampStops(RAMP_LOW, (mid - v) / Math.max(1e-9, mid - lo)); }
+  let plot = { x: 0, y: 0, w: 0, h: 0 };
+
+  function drawHeat() {
+    if (!grid) return;
+    const cssW = heat.clientWidth || heat.parentElement.clientWidth, cssH = Math.round(cssW * 0.5);
+    const dpr = window.devicePixelRatio || 1;
+    heat.width = Math.round(cssW * dpr); heat.height = Math.round(cssH * dpr); heat.style.height = cssH + 'px';
+    hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    hctx.clearRect(0, 0, cssW, cssH);
+    plot = { x: PAD.l, y: PAD.t, w: cssW - PAD.l - PAD.r, h: cssH - PAD.t - PAD.b };
+    const cw = plot.w / AZS.length, ch = plot.h / TILTS.length;
+    let lo = Infinity, sum = 0;
+    for (let i = 0; i < grid.length; i++) { if (grid[i] < lo) lo = grid[i]; sum += grid[i]; }
+    const mid = sum / grid.length;   // white = the average over every orientation
+    for (let ti = 0; ti < TILTS.length; ti++) for (let ai = 0; ai < AZS.length; ai++) {
+      const v = grid[ti * AZS.length + ai];
+      hctx.fillStyle = rampColor(v, lo, mid, gridMax);
+      hctx.fillRect(plot.x + ai * cw, plot.y + plot.h - (ti + 1) * ch, cw + 0.5, ch + 0.5);
+    }
+    // axes
+    hctx.font = '11px ' + css('--sans'); hctx.textAlign = 'center'; hctx.textBaseline = 'top';
+    [['N', 0], ['E', 90], ['S', 180], ['W', 270], ['N', 360]].forEach(([n, a]) => {
+      const x = plot.x + a / 360 * plot.w;
+      if (a > 0 && a < 360) { hctx.fillStyle = 'rgba(255,255,255,.5)'; hctx.fillRect(x - .5, plot.y, 1, plot.h); }
+      hctx.fillStyle = css('--text-2');
+      hctx.fillText(n, Math.min(plot.x + plot.w - 5, Math.max(plot.x + 5, x)), plot.y + plot.h + 6);
+    });
+    hctx.textAlign = 'right'; hctx.textBaseline = 'middle';
+    [0, 30, 60, 90].forEach((t) => hctx.fillText(t + '°', plot.x - 6, plot.y + plot.h - t / 90 * plot.h));
+    hctx.save(); hctx.translate(10, plot.y + plot.h / 2); hctx.rotate(-Math.PI / 2); hctx.textAlign = 'center'; hctx.fillText('Tilt', 0, 0); hctx.restore();
+    // optimum star and current-selection ring
+    drawStar(plot.x + (opt.az + A_STEP / 2) / 360 * plot.w, plot.y + plot.h - (opt.tilt + T_STEP / 2) / 90 * plot.h, 7);
+    const sx = plot.x + (state.az + A_STEP / 2) / 360 * plot.w, sy = plot.y + plot.h - (state.tilt + T_STEP / 2) / 90 * plot.h;
+    hctx.beginPath(); hctx.arc(sx, sy, 7, 0, Math.PI * 2); hctx.lineWidth = 4; hctx.strokeStyle = '#fff'; hctx.stroke();
+    hctx.lineWidth = 2; hctx.strokeStyle = css('--text'); hctx.stroke();
+    $('legendMax').textContent = 'Max ' + fmtE(opt.kwhm2 * state.kwp * state.pr) + '/yr';
+  }
+  function drawStar(x, y, r) {
+    hctx.beginPath();
+    for (let i = 0; i < 10; i++) { const rr = i % 2 ? r * 0.45 : r, a = -Math.PI / 2 + i * Math.PI / 5; hctx.lineTo(x + rr * Math.cos(a), y + rr * Math.sin(a)); }
+    hctx.closePath(); hctx.fillStyle = '#fff'; hctx.fill(); hctx.lineWidth = 1.5; hctx.strokeStyle = css('--s2'); hctx.stroke();
+  }
+  function cellAt(ev) {
+    const r = heat.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+    if (x < plot.x || x > plot.x + plot.w || y < plot.y || y > plot.y + plot.h) return null;
+    const ai = Math.min(AZS.length - 1, Math.floor((x - plot.x) / plot.w * AZS.length));
+    const ti = Math.min(TILTS.length - 1, Math.floor((plot.y + plot.h - y) / plot.h * TILTS.length));
+    return { ai, ti, x, y };
+  }
+  heat.addEventListener('mousemove', (ev) => {
+    const c = cellAt(ev);
+    if (!c) { tip.style.display = 'none'; return; }
+    const sys = state.kwp * state.pr, v = grid[c.ti * AZS.length + c.ai] * sys;
+    tip.textContent = 'Tilt ' + TILTS[c.ti] + '°, ' + AZS[c.ai] + '° ' + compassName(AZS[c.ai]) + ': ' + fmtE(v) + '/yr (' + Math.round(v / (opt.kwhm2 * sys) * 100) + '%)';
+    tip.style.display = 'block';
+    const half = tip.offsetWidth / 2 + 4;
+    tip.style.left = Math.max(half, Math.min(heat.clientWidth - half, c.x)) + 'px'; tip.style.top = c.y + 'px';
+  });
+  heat.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  heat.addEventListener('click', (ev) => { const c = cellAt(ev); if (c) setOrientation(TILTS[c.ti], AZS[c.ai]); });
+  window.addEventListener('resize', () => { drawHeat(); drawLoad(); map.invalidateSize(); });
+  window.addEventListener('load', () => setTimeout(() => { map.invalidateSize(); drawHeat(); }, 100));
+  if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($('map'));   // the map fills the card, which follows the panel card's height
+
+  // ---------- compass & side view ----------
+  function drawRose() {
+    const a = state.az;
+    $('rose').innerHTML =
+      '<circle r="50" fill="#fff" stroke="' + css('--border') + '"/>' +
+      '<g stroke="' + css('--grid') + '"><line x1="0" y1="-50" x2="0" y2="50"/><line x1="-50" y1="0" x2="50" y2="0"/></g>' +
+      '<text x="0" y="-38" text-anchor="middle">N</text><text x="40" y="4" text-anchor="middle">E</text>' +
+      '<text x="0" y="45" text-anchor="middle">S</text><text x="-40" y="4" text-anchor="middle">W</text>' +
+      '<g transform="rotate(' + a + ')"><line x1="0" y1="0" x2="0" y2="-32" stroke="' + css('--s1') + '" stroke-width="3" stroke-linecap="round"/>' +
+      '<polygon points="0,-36 -6,-24 6,-24" fill="' + css('--s1') + '"/></g><circle r="3" fill="' + css('--text') + '"/>';
+    const t = state.tilt * DEG, L = 70, x0 = 95, y0 = 90;
+    $('side').innerHTML =
+      '<line x1="10" y1="90" x2="130" y2="90" stroke="' + css('--border') + '"/>' +
+      '<path d="M ' + x0 + ' ' + y0 + ' L ' + (x0 - 28) + ' ' + y0 + ' A 28 28 0 0 0 ' + (x0 - 28 * Math.cos(t)) + ' ' + (y0 - 28 * Math.sin(t)) + ' Z" fill="' + css('--s1-wash') + '"/>' +
+      '<line x1="' + x0 + '" y1="' + y0 + '" x2="' + (x0 - L * Math.cos(t)) + '" y2="' + (y0 - L * Math.sin(t)) + '" stroke="' + css('--s1') + '" stroke-width="5" stroke-linecap="round"/>' +
+      '<text x="' + (x0 - 40) + '" y="112" text-anchor="middle">tilt ' + state.tilt + '°</text>';
+  }
+
+  // Click or drag on the compass rose to set azimuth, on the side view to set tilt.
+  function dragControl(svg, toValue, apply) {
+    let active = false;
+    const handle = (ev) => {
+      const r = svg.getBoundingClientRect();
+      const v = toValue((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
+      if (v !== null) apply(v);
+    };
+    svg.addEventListener('pointerdown', (ev) => { active = true; svg.setPointerCapture(ev.pointerId); handle(ev); ev.preventDefault(); });
+    svg.addEventListener('pointermove', (ev) => { if (active) handle(ev); });
+    const stop = () => { active = false; };
+    svg.addEventListener('pointerup', stop); svg.addEventListener('pointercancel', stop);
+  }
+  dragControl($('rose'), (fx, fy) => {
+    const dx = fx - 0.5, dy = fy - 0.5;
+    if (Math.hypot(dx, dy) < 0.03) return null;               // ignore the dead centre
+    return (Math.round(Math.atan2(dx, -dy) / DEG) + 360) % 360;
+  }, (a) => setOrientation(state.tilt, a));
+  dragControl($('side'), (fx, fy) => {
+    const px = fx * 140, py = fy * 120, dx = 95 - px, dy = 90 - py;   // pivot at (95, 90) in viewBox units
+    if (Math.hypot(dx, dy) < 6) return null;
+    return Math.max(0, Math.min(90, Math.round(Math.atan2(dy, dx) / DEG)));
+  }, (t) => setOrientation(t, state.az));
+
+  // ---------- system draw simulator ----------
+  const kwProfile = (a) => a.map((v) => v * 1000);   // kW -> W
+  const PRESETS = {   // watts per hour, plus the editor unit that suits the preset
+    lora:   { unit: 1, w: new Array(24).fill(0.045) },
+    esp32:  { unit: 1, w: new Array(24).fill(0.09) },
+    sensor: { unit: 1, w: new Array(24).fill(0.005) },
+    pizero: { unit: 2, w: new Array(24).fill(0.7) },
+    house:  { unit: 3, w: kwProfile([0.3, 0.25, 0.25, 0.25, 0.25, 0.3, 0.6, 0.8, 0.5, 0.4, 0.4, 0.45, 0.5, 0.4, 0.4, 0.45, 0.6, 1.0, 1.4, 1.3, 1.0, 0.7, 0.5, 0.35]) },
+    office: { unit: 3, w: kwProfile([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.6, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.8, 0.4, 0.2, 0.1, 0.1, 0.1, 0.1]) },
+    night:  { unit: 3, w: kwProfile([0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4]) },
+    flat:   { unit: 2, w: new Array(24).fill(500) },
+  };
+  // Energy display for the simulator: the size unit's energy (kWp -> kWh) unless the value is below 1 there, then step down.
+  const WH_UNITS = ['µWh', 'mWh', 'Wh', 'kWh', 'MWh', 'GWh'];
+  const whDiv = (i) => Math.pow(10, 3 * (i - 2));      // divisor for a value in Wh
+  function whIdx(wh) { let i = Math.min(5, state.sizeUnit + 2); while (i > 0 && wh / whDiv(i) < 1) i--; return i; }
+  function fmtWh(wh) { const i = whIdx(wh); return fmtNum(wh / whDiv(i)) + ' ' + WH_UNITS[i]; }
+  function powerIdx(w) { let i = LOAD_UNITS.length - 1; while (i > 0 && w / LOAD_UNITS[i].f < 1) i--; return i; }
+  function fmtW(w) { const i = powerIdx(w); return fmtNum(w / LOAD_UNITS[i].f) + ' ' + LOAD_UNITS[i].u; }
+  function fmtI(a) { return a >= 1 ? fmtNum(a) + ' A' : a >= 1e-3 ? fmtNum(a * 1e3) + ' mA' : fmtNum(a * 1e6) + ' µA'; }
+  const plain = (v) => {                               // number for an input field: no separators, no exponent
+    const s = String(+v.toPrecision(4));
+    return /e/.test(s) ? (+v.toPrecision(4)).toFixed(20).replace(/\.?0+$/, '') : s;
+  };
+
+  // "45 mW", "2W", "1.5 kW", "12 mA at 3.7 V", "12mA @ 3.7V", "0.5 A at 12 V", "12 mA" (uses the battery voltage), or a bare number in the editor unit.
+  function parseSpec(str) {
+    const s = String(str).trim().replace(/,/g, '').replace(/µ/g, 'u'), N = '([0-9]*\\.?[0-9]+(?:e-?[0-9]+)?)';
+    const amps = (n, p) => parseFloat(n) * (p ? (p.toLowerCase() === 'u' ? 1e-6 : 1e-3) : 1);
+    let m;
+    if ((m = s.match(new RegExp('^' + N + '\\s*(u|m)?a\\s*(?:at|@)?\\s*' + N + '\\s*(m)?v$', 'i')))) {
+      const I = amps(m[1], m[2]), V = parseFloat(m[3]) * (m[4] ? 1e-3 : 1);
+      return { w: I * V, note: fmtI(I) + ' × ' + fmtNum(V) + ' V' };
+    }
+    if ((m = s.match(new RegExp('^' + N + '\\s*(u|m)?a$', 'i')))) {
+      const I = amps(m[1], m[2]);
+      return { w: I * state.battV, note: fmtI(I) + ' at the battery voltage of ' + fmtNum(state.battV) + ' V' };
+    }
+    if ((m = s.match(new RegExp('^' + N + '\\s*(u|m|k|K|M|G|g)?[wW]$')))) {   // prefix case matters: m = milli, M = mega
+      return { w: parseFloat(m[1]) * { '': 1, u: 1e-6, m: 1e-3, k: 1e3, K: 1e3, M: 1e6, G: 1e9, g: 1e9 }[m[2] || ''], note: '' };
+    }
+    if ((m = s.match(new RegExp('^' + N + '$')))) return { w: parseFloat(m[1]) * loadUnit().f, note: '' };
+    return null;
+  }
+
+  const loadEd = $('loadEd'), lctx = loadEd.getContext('2d'), loadTip = $('loadtip');
+  const LPAD = { l: 48, r: 8, t: 10, b: 22 };
+  let lplot = { x: 0, y: 0, w: 0, h: 0 }, lmax = 1;
+  function niceCeil(v) {
+    if (!(v > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v))), m = v / p;
+    return ([1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find((s) => m <= s + 1e-9) || 10) * p;
+  }
+  let painting = false, strokeMax = 1;   // during a drag stroke the axis is frozen so the scale cannot run away
+  LOAD_UNITS.forEach((u, i) => { const o = document.createElement('option'); o.value = i; o.textContent = u.u; $('loadUnitSel').appendChild(o); });
+  $('loadUnitSel').addEventListener('change', () => { state.loadUnit = parseInt($('loadUnitSel').value, 10); save(); drawLoad(); });
+  $('loadAllUnit').addEventListener('click', () => {   // cycle the draw unit, same as clicking the system size unit
+    state.loadUnit = (state.loadUnit + 1) % LOAD_UNITS.length;
+    save(); $('loadAll').blur(); drawLoad();
+  });
+  function drawLoad(forceField) {
+    const cssW = loadEd.clientWidth || loadEd.parentElement.clientWidth, cssH = 180, dpr = window.devicePixelRatio || 1;
+    loadEd.width = Math.round(cssW * dpr); loadEd.height = Math.round(cssH * dpr); loadEd.style.height = cssH + 'px';
+    lctx.setTransform(dpr, 0, 0, dpr, 0, 0); lctx.clearRect(0, 0, cssW, cssH);
+    lplot = { x: LPAD.l, y: LPAD.t, w: cssW - LPAD.l - LPAD.r, h: cssH - LPAD.t - LPAD.b };
+    const LU = loadUnit(), vals = state.loadW.map((w) => w / LU.f);
+    $('loadUnitSel').value = state.loadUnit; $('loadAllUnit').textContent = LU.u;
+    if (forceField || document.activeElement !== $('loadAll')) { $('loadAll').value = plain(vals.reduce((a, b) => a + b, 0) / 24); $('loadAllNote').textContent = ''; }
+    const yearWh = state.loadW.reduce((a, b) => a + b, 0) / 24 * 8760, yi = whIdx(yearWh);
+    if (forceField || document.activeElement !== $('loadYear')) $('loadYear').value = plain(yearWh / whDiv(yi));
+    $('loadYearUnit').textContent = WH_UNITS[yi];
+    lmax = painting ? strokeMax : niceCeil(Math.max(...vals) * 1.25);
+    lctx.font = '11px ' + css('--sans'); lctx.textAlign = 'right'; lctx.textBaseline = 'middle';
+    for (let i = 0; i <= 4; i++) {
+      const y = lplot.y + lplot.h - i / 4 * lplot.h;
+      lctx.strokeStyle = css('--grid'); lctx.beginPath(); lctx.moveTo(lplot.x, y + .5); lctx.lineTo(lplot.x + lplot.w, y + .5); lctx.stroke();
+      lctx.fillStyle = css('--text-2'); lctx.fillText(fmtNum(lmax * i / 4), lplot.x - 6, y);
+    }
+    const bw = lplot.w / 24;
+    lctx.fillStyle = css('--s1');
+    for (let h = 0; h < 24; h++) {
+      const bh = Math.min(1, vals[h] / lmax) * lplot.h, x = lplot.x + h * bw + 1, y = lplot.y + lplot.h - bh, w = bw - 2, r = Math.min(3, bh);
+      lctx.beginPath(); lctx.moveTo(x, y + bh); lctx.lineTo(x, y + r); lctx.quadraticCurveTo(x, y, x + r, y); lctx.lineTo(x + w - r, y);
+      lctx.quadraticCurveTo(x + w, y, x + w, y + r); lctx.lineTo(x + w, y + bh); lctx.closePath(); lctx.fill();
+    }
+    lctx.fillStyle = css('--text-2'); lctx.textAlign = 'center'; lctx.textBaseline = 'top';
+    for (let h = 0; h < 24; h += 3) lctx.fillText(String(h).padStart(2, '0'), lplot.x + (h + 0.5) * bw, lplot.y + lplot.h + 6);
+    lctx.save(); lctx.translate(10, lplot.y + lplot.h / 2); lctx.rotate(-Math.PI / 2); lctx.textAlign = 'center'; lctx.textBaseline = 'middle'; lctx.fillText(LU.u, 0, 0); lctx.restore();
+  }
+  function loadHourAt(ev) {
+    const r = loadEd.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+    const h = Math.floor((x - lplot.x) / lplot.w * 24);
+    // above the plot the value keeps rising with the pointer, gently: a full plot height above the top doubles it
+    const frac = (lplot.y + lplot.h - y) / lplot.h;
+    return (h < 0 || h > 23) ? null : { h, x, y, v: Math.max(0, Math.min(3, frac)) * lmax };
+  }
+  function paintAt(ev) {
+    const c = loadHourAt(ev); if (!c) return;
+    const step = lmax / 100;
+    state.loadW[c.h] = +(Math.round(c.v / step) * step * loadUnit().f).toPrecision(6);
+    save(); drawLoad(); runSim();
+  }
+  function showLoadTip(ev) {
+    const c = loadHourAt(ev);
+    if (!c) { loadTip.style.display = 'none'; return; }
+    const LU = loadUnit(), v = state.loadW[c.h] / LU.f;
+    loadTip.textContent = String(c.h).padStart(2, '0') + ':00–' + String(c.h + 1).padStart(2, '0') + ':00: ' + fmtNum(v) + ' ' + LU.u;
+    loadTip.style.left = c.x + 'px'; loadTip.style.top = (lplot.y + lplot.h - v / lmax * lplot.h) + 'px'; loadTip.style.display = 'block';
+  }
+  loadEd.addEventListener('pointerdown', (ev) => { painting = true; strokeMax = lmax; loadEd.setPointerCapture(ev.pointerId); paintAt(ev); showLoadTip(ev); ev.preventDefault(); });
+  loadEd.addEventListener('pointermove', (ev) => { if (painting) paintAt(ev); showLoadTip(ev); });
+  const stopPaint = () => { if (painting) { painting = false; drawLoad(); } };   // rescale the axis once, when the stroke ends
+  loadEd.addEventListener('pointerup', stopPaint); loadEd.addEventListener('pointercancel', stopPaint);
+  loadEd.addEventListener('pointerleave', () => { loadTip.style.display = 'none'; });
+  function previewSpec() {
+    const r = parseSpec($('loadAll').value), note = $('loadAllNote');
+    if (!r) { note.textContent = $('loadAll').value.trim() ? 'Not understood: try "45 mW" or "12 mA at 3.7 V".' : ''; return null; }
+    note.textContent = '= ' + fmtW(r.w) + (r.note ? ' (' + r.note + ')' : '');
+    return r;
+  }
+  // Editing the average scales the profile live, from the shape it had when editing began; Flatten sets every hour equal.
+  let shapeRef = null;
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  function pickUnitFor(w) { const inUnit = w / loadUnit().f; if (w > 0 && (inUnit < 0.01 || inUnit >= 10000)) state.loadUnit = powerIdx(w); }
+  function scaleProfileTo(avgW) {   // keep the shape, move the average to avgW watts
+    const ref = shapeRef || state.loadW, avg = mean(ref);
+    state.loadW = avg > 0 ? ref.map((w) => +(w * avgW / avg).toPrecision(6)) : new Array(24).fill(avgW);
+    save(); drawLoad(); runSim();
+  }
+  $('loadAll').addEventListener('focus', () => { shapeRef = state.loadW.slice(); });
+  $('loadAll').addEventListener('input', () => { const r = previewSpec(); if (r && r.w > 0) scaleProfileTo(r.w); });
+  // Annual use: the same scaling, driven by a yearly energy figure such as the one on a bill.
+  $('loadYear').addEventListener('focus', () => { shapeRef = state.loadW.slice(); });
+  $('loadYear').addEventListener('input', () => {
+    const v = parseFloat(String($('loadYear').value).replace(/,/g, '')); if (!(v > 0)) return;
+    const unitWh = whDiv(WH_UNITS.indexOf($('loadYearUnit').textContent));
+    scaleProfileTo(v * unitWh / 8760);
+  });
+  $('loadYear').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loadYear').blur(); });
+  $('loadYear').addEventListener('blur', () => { shapeRef = null; drawLoad(true); });
+  $('loadAll').addEventListener('change', () => { const r = parseSpec($('loadAll').value); if (r && r.w > 0) { pickUnitFor(r.w); save(); } drawLoad(true); });
+  $('loadAll').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('loadAll').blur(); });
+  $('loadAll').addEventListener('blur', () => { shapeRef = null; drawLoad(true); });
+  $('loadAllBtn').addEventListener('click', () => {
+    const r = previewSpec(); if (!r || !(r.w >= 0)) return;
+    state.loadW = new Array(24).fill(r.w); pickUnitFor(r.w);
+    $('loadAll').blur(); save(); drawLoad(true); runSim();
+  });
+  $('loadPreset').addEventListener('change', () => {
+    const p = PRESETS[$('loadPreset').value];
+    if (p) { state.loadW = p.w.slice(); state.loadUnit = p.unit; save(); drawLoad(); runSim(); }
+    $('loadPreset').value = '';
+  });
+
+  // Battery: capacity in the unit the user picked (mAh, Ah or Wh) at any voltage; the simulation uses Ah × V.
+  // Ah of one module; the simulation uses battAhTotal(), which includes the multiplier.
+  function battAh() { const c = state.battCap; return state.battCapUnit === 'mAh' ? c / 1000 : state.battCapUnit === 'Wh' ? (state.battV > 0 ? c / state.battV : 0) : c; }
+  function battAhTotal() { return state.noBatt ? 0 : battAh() * Math.max(1, state.battN || 1); }
+  function updateBattUI() {
+    const ah = battAh(), n = Math.max(1, state.battN || 1), parts = [];
+    $('noBatt').checked = !!state.noBatt; document.querySelector('.battery').classList.toggle('off', !!state.noBatt);
+    updateLimitUI();
+    if (state.battCapUnit !== 'mAh') parts.push(fmtNum(ah * 1000) + ' mAh');
+    if (state.battCapUnit !== 'Ah') parts.push(fmtNum(ah) + ' Ah');
+    if (state.battCapUnit !== 'Wh') parts.push(fmtWh(ah * state.battV));
+    $('battEquiv').textContent = (n > 1 ? 'each = ' : '= ') + parts.join(' · ') +
+      (n > 1 ? ' · total ' + fmtWh(ah * n * state.battV) + ' (' + fmtNum(ah * n) + ' Ah)' : '');
+    document.querySelectorAll('#vChips .chip').forEach((b) => b.classList.toggle('on', Math.abs(parseFloat(b.dataset.v) - state.battV) < 1e-9));
+    // show the preset that matches the current battery, or the placeholder when it has been edited by hand
+    const sel = $('battPreset'), near = (a, b) => Math.abs(a - b) < 1e-6;
+    const match = [...sel.options].find((o) => o.dataset.cap && o.dataset.unit === state.battCapUnit && near(+o.dataset.cap, state.battCap) &&
+      near(+o.dataset.v, state.battV) && near(+o.dataset.dod, state.dod) && near(+o.dataset.eff, state.battEff));
+    sel.selectedIndex = match && !state.noBatt ? match.index : 0;
+  }
+  // Charge and discharge limits in watts; default 0.5C. Accept "200 mA at 4 V", "0.8 W", "3 kW" or a bare number in W.
+  const autoLimitW = () => Math.max(0.001, +(battAh() * Math.max(1, state.battN || 1) * state.battV / 2).toPrecision(2));
+  const chargeW = () => state.noBatt ? 0 : state.battChargeW != null ? state.battChargeW : autoLimitW();
+  const dischargeW = () => state.noBatt ? 0 : state.battDischargeW != null ? state.battDischargeW : autoLimitW();
+  function parsePower(str) { const s = String(str).trim(); if (/^[0-9]*.?[0-9]+(e-?[0-9]+)?$/.test(s)) return { w: parseFloat(s) }; return parseSpec(s); }
+  const LIMITS = [['battChg', 'battChargeW', chargeW], ['battDis', 'battDischargeW', dischargeW]];
+  function updateLimitUI() {
+    for (const [id, key, get] of LIMITS) {
+      const el = $(id); if (document.activeElement !== el) el.value = fmtW(get());
+      $(id + 'Note').innerHTML = state[key] == null ? 'Typical: 0.5C' : 'Manual value. <a class="limReset" data-key="' + key + '">Use typical (0.5C = ' + fmtW(autoLimitW()) + ')</a>';
+    }
+  }
+  for (const [id, key] of LIMITS) {
+    $(id).addEventListener('input', () => { const r = parsePower($(id).value); if (r && r.w >= 0) { state[key] = r.w; save(); runSim(); } });
+    $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') $(id).blur(); });
+    $(id).addEventListener('blur', () => { $(id).value = fmtW(LIMITS.find((l) => l[0] === id)[2]()); updateLimitUI(); });
+  }
+  document.addEventListener('click', (e) => { const a = e.target.closest('.limReset'); if (!a) return; state[a.dataset.key] = null; save(); runSim(); });
+  $('noBatt').addEventListener('change', () => { state.noBatt = $('noBatt').checked; save(); runSim(); });
+  $('battPreset').addEventListener('change', () => {
+    const o = $('battPreset').selectedOptions[0]; if (!o || !o.dataset.cap) return;
+    state.noBatt = false;
+    state.battCap = parseFloat(o.dataset.cap); state.battCapUnit = o.dataset.unit; state.battV = parseFloat(o.dataset.v);
+    state.dod = parseFloat(o.dataset.dod); state.battEff = parseFloat(o.dataset.eff);   // chemistry defaults ride along
+    $('battCap').value = state.battCap; $('battCapUnit').value = state.battCapUnit; $('battV').value = state.battV;
+    for (const id of ['dod', 'battEff']) { $(id).value = state[id]; $(id + 'Out').textContent = sliders[id].fmt(state[id]); }
+    updatePills(); save(); runSim();
+  });
+  $('battCap').value = state.battCap; $('battCapUnit').value = state.battCapUnit; $('battV').value = state.battV; $('battN').value = state.battN;
+  $('battCap').addEventListener('input', () => { state.battCap = Math.max(0, parseFloat($('battCap').value) || 0); save(); runSim(); });
+  $('battN').addEventListener('input', () => { state.battN = Math.max(1, Math.round(parseFloat($('battN').value) || 1)); save(); runSim(); });
+  $('battCapUnit').addEventListener('change', () => {   // convert so the physical battery stays the same
+    const ah = battAh(), u = $('battCapUnit').value;
+    state.battCap = +(u === 'mAh' ? ah * 1000 : u === 'Wh' ? ah * state.battV : ah).toPrecision(6); state.battCapUnit = u;
+    $('battCap').value = state.battCap; save(); runSim();
+  });
+  $('battV').addEventListener('input', () => { const v = parseFloat($('battV').value); if (v > 0) { state.battV = v; save(); runSim(); } });
+  $('vChips').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    state.battV = parseFloat(b.dataset.v); $('battV').value = state.battV; save(); runSim();
+  });
+
+  // Average system power (kW) for every hour of every day of the year, cached until the panel setup changes.
+  let pvCache = { key: '', pv: null };
+  function hourlyPv() {
+    const key = [state.lat, state.tilt, state.az, state.kwp, state.pr, state.albedo, state.clear, state.climate && state.climate.avg].join('|');
+    if (pvCache.key === key) return pvCache.pv;
+    const kArr = kByMonth(), pv = new Array(365);
+    for (let n = 1; n <= 365; n++) {
+      const p = dayPower(state.lat, n, state.tilt, state.az, kArr, state.albedo, state.kwp, state.pr), day = new Float64Array(24);
+      for (let h = 0; h < 24; h++) { let s = 0; for (let k = 0; k < 6; k++) s += p(h + (k + 0.5) / 6); day[h] = s / 6; }
+      pv[n - 1] = day;
+    }
+    pvCache = { key, pv };
+    return pv;
+  }
+
+  // Hour-by-hour simulation of a full year (run twice, the second pass is reported so January starts realistically).
+  function simulate() {
+    const load = state.loadW.map((w) => w / 1000);                                // kW per hour of the day
+    const capKwh = battAhTotal() * state.battV / 1000, usable = capKwh * state.dod, eta = Math.sqrt(state.battEff);
+    const pc = chargeW() / 1000, pd = dischargeW() / 1000;   // kW limits from the charger and inverter
+    const pv = hourlyPv();
+    const months = Array.from({ length: 12 }, () => ({ pv: 0, load: 0, short: 0, curtailed: 0, outageHours: 0, outageDays: 0, minSoc: 1 }));
+    const socMin = [], socMax = []; let e = usable;
+    for (let year = 0; year < 2; year++) for (let n = 0; n < 365; n++) {
+      const M = months[new Date(2025, 0, n + 1).getMonth()]; let dayOut = false, dayMin = 1, dayMax = 0;
+      for (let h = 0; h < 24; h++) {
+        const net = pv[n][h] - load[h]; let short = 0, curt = 0;
+        if (net >= 0) { const room = (usable - e) / eta, stored = Math.min(net, room, pc); e += stored * eta; curt = net - stored; }
+        else { const need = -net / eta, take = Math.min(need, e, pd); e -= take; short = (need - take) * eta; }
+        if (year === 1) {
+          M.pv += pv[n][h]; M.load += load[h]; M.short += short; M.curtailed += curt;
+          if (short > 1e-9) { M.outageHours++; dayOut = true; }
+          const frac = usable > 0 ? e / usable : 0; if (frac < dayMin) dayMin = frac; if (frac > dayMax) dayMax = frac;
+        }
+      }
+      if (year === 1) { if (dayOut) M.outageDays++; if (dayMin < M.minSoc) M.minSoc = dayMin; socMin.push(dayMin); socMax.push(dayMax); }
+    }
+    return { months, socMin, socMax, usable, capKwh, avgLoad: load.reduce((a, b) => a + b, 0) / 24 };
+  }
+  const MONTH_STARTS = DAYS.reduce((a, d) => (a.push(a[a.length - 1] + d), a), [0]);
+  const simMonthly = new Chart($('simMonthly'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Production', data: [], borderColor: css('--text'), backgroundColor: css('--text'), borderWidth: 3 },
+      { label: 'Consumption', data: [], borderColor: css('--muted'), backgroundColor: css('--muted'), borderDash: [6, 4],
+        // red where consumption exceeds production, green where it stays below
+        segment: { borderColor: (ctx) => { const pv = ctx.chart.data.datasets[0].data; return (ctx.p0.parsed.y + ctx.p1.parsed.y) > (pv[ctx.p0DataIndex] + pv[ctx.p1DataIndex]) ? '#e34948' : '#008300'; } },
+        pointBackgroundColor: (ctx) => !ctx.parsed ? css('--muted') : ctx.parsed.y > ctx.chart.data.datasets[0].data[ctx.dataIndex] ? '#e34948' : '#008300',
+        fill: { target: 0, above: 'rgba(227,73,72,.14)', below: 'rgba(0,131,0,.12)' } },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+      elements: { line: { borderWidth: 2, tension: 0.3, borderJoinStyle: 'round' }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card'), hoverBorderWidth: 1, hoverBorderColor: css('--card') } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: legendDashNeutral,
+        tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + fmtNum(c.parsed.y) + ' ' + simEUnit,
+          afterBody: (items) => { const M = lastSim && lastSim.months[items[0].dataIndex]; return M ? ['Shortfall after battery: ' + fmtNum(M.short / lastSim.ed) + ' ' + simEUnit] : []; } } } },
+      scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false }, title: { display: true, text: '' }, ticks: { callback: (v) => v.toLocaleString() } } } }
+  });
+  const simSoc = new Chart($('simSoc'), {
+    type: 'line',
+    data: { datasets: [
+      { label: 'Highest each day', data: [], borderColor: '#86b6ef', backgroundColor: '#86b6ef', borderWidth: 1 },
+      { label: 'Lowest each day', data: [], borderColor: css('--s1'), backgroundColor: css('--s1-wash'), fill: '-1' },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, parsing: false, normalized: true,
+      elements: { line: { borderWidth: 2, tension: 0 }, point: { radius: 0, hoverRadius: 4 } },
+      interaction: { mode: 'index', intersect: false, axis: 'x' },
+      plugins: { legend: legendSolid, tooltip: { callbacks: { labelColor: solidSwatch,
+        title: (items) => { const dt = new Date(2025, 0, Math.round(items[0].parsed.x) + 1); return dt.getDate() + ' ' + MONTHS[dt.getMonth()]; },
+        label: (c) => ' ' + c.dataset.label + ': ' + Math.round(c.parsed.y) + ' %' } } },
+      scales: { x: { type: 'linear', min: 0, max: 365, grid: { display: false }, afterBuildTicks: (ax) => { ax.ticks = MONTH_STARTS.slice(0, 12).map((v) => ({ value: v })); }, ticks: { callback: (v) => MONTHS[MONTH_STARTS.indexOf(v)] || '' } },
+        y: { min: 0, max: 100, grid: { color: gridColor }, border: { display: false }, title: { display: true, text: '% charged' } } } }
+  });
+  let simEUnit = 'kWh', lastSim = null;
+  function runSim() {
+    updateBattUI();
+    const r = simulate();
+    // one energy unit for the chart and table, chosen from the largest monthly value (kWh values -> Wh first)
+    const ei = whIdx(Math.max(...r.months.map((M) => Math.max(M.pv, M.load))) * 1000), ed = whDiv(ei) / 1000, eU = WH_UNITS[ei];
+    simEUnit = eU; r.ed = ed; lastSim = r;
+    simMonthly.data.datasets[0].data = r.months.map((M) => M.pv / ed);
+    simMonthly.data.datasets[1].data = r.months.map((M) => M.load / ed);
+    simMonthly.options.scales.y.title.text = eU + ' per month';
+    simMonthly.update();
+    simSoc.data.datasets[0].data = r.socMax.map((v, i) => ({ x: i, y: v * 100 }));
+    simSoc.data.datasets[1].data = r.socMin.map((v, i) => ({ x: i, y: v * 100 }));
+    simSoc.update();
+    const outDays = r.months.reduce((a, M) => a + M.outageDays, 0), outHours = r.months.reduce((a, M) => a + M.outageHours, 0);
+    const pvTot = r.months.reduce((a, M) => a + M.pv, 0), curt = r.months.reduce((a, M) => a + M.curtailed, 0);
+    $('simDays').textContent = 365 - outDays;
+    $('simHours').textContent = outHours.toLocaleString();
+    const ri = r.usable > 0 ? whIdx(r.usable * 1000) : Math.min(5, state.sizeUnit + 2);
+    $('simReserve').textContent = fmtNum(r.usable * 1000 / whDiv(ri)); $('simReserveU').textContent = WH_UNITS[ri];
+    $('simAutonomy').textContent = r.avgLoad > 0 ? 'About ' + fmtNum(r.usable / r.avgLoad) + ' h at the average draw' : 'No draw set';
+    $('simSurplus').textContent = pvTot > 0 ? Math.round(curt / pvTot * 100) : 0;
+    let rows = '<tr><th>Month</th><th>Production (' + eU + ')</th><th>Consumption (' + eU + ')</th><th>Shortfall (' + eU + ')</th><th>Days with outage</th><th>Lowest charge</th></tr>';
+    r.months.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + fmtNum(M.pv / ed) + '</td><td>' + fmtNum(M.load / ed) + '</td><td>' + fmtNum(M.short / ed) + '</td><td>' + M.outageDays + '</td><td>' + Math.round(M.minSoc * 100) + ' %</td></tr>'; });
+    $('simTable').innerHTML = rows;
+    runCost();   // the cost section depends on the same draw and battery
+  }
+
+  // ---------- cost & return ----------
+  function flat(p) { return new Array(24).fill(p); }
+  function win(base, windows) { const a = flat(base); windows.forEach(([f, t, p]) => { for (let h = f; h < t; h++) a[h] = p; }); return a; }
+  const TARIFFS_IMP = [   // typical UK import tariffs, p/kWh by hour (approximate 2025 rates, solar time)
+    ['Flat (price cap)', flat(25), 54],
+    ['Economy 7', win(31, [[0, 7, 14]]), 60],
+    ['Octopus Go', win(27, [[1, 6, 8.5]]), 50],
+    ['Intelligent Octopus Go', win(27, [[0, 6, 7], [23, 24, 7]]), 50],
+    ['Octopus Agile (typical day)', [15, 14, 13, 13, 13, 14, 17, 22, 24, 22, 20, 19, 19, 19, 20, 22, 33, 38, 36, 28, 24, 20, 18, 16], 50],
+    ['Cosy Octopus', win(27, [[4, 7, 12], [13, 16, 12], [22, 24, 12], [16, 19, 37]]), 50],
+    ['Octopus Flux import', win(22, [[2, 5, 15], [16, 19, 32]]), 50],
+  ];
+  const TARIFFS_EXP = [   // typical UK export (SEG) tariffs
+    ['Basic SEG', flat(4)],
+    ['Octopus Outgoing Fixed', flat(15)],
+    ['Octopus Outgoing Agile (typical day)', [8, 7, 7, 7, 7, 8, 10, 14, 15, 13, 12, 11, 11, 11, 12, 14, 24, 28, 26, 19, 15, 12, 10, 9]],
+    ['Octopus Flux export', win(19, [[2, 5, 8], [16, 19, 27]])],
+    ['Intelligent Octopus Flux export', flat(26)],
+    ['British Gas Export & Earn Plus', flat(15)],
+    ['E.ON Next Export Exclusive', flat(16.5)],
+  ];
+  const CURRENCIES = [{ sym: '£', sub: 'p' }, { sym: '$', sub: '¢' }, { sym: '€', sub: 'c' }, { sym: '🪙', sub: '¢' }];
+  const cur = () => CURRENCIES[state.currency] || CURRENCIES[0];
+  const gbp = (v) => (v < 0 ? '−' : '') + cur().sym + fmtNum(Math.abs(v));
+  const gbpHtml = (v) => (v < 0 ? '−' : '') + '<span class="sym">' + cur().sym + '</span>' + fmtNum(Math.abs(v));   // smaller symbol for large tile values
+  function applyCurrency() {
+    document.querySelectorAll('.cur').forEach((el) => { el.textContent = cur().sym; });
+    document.querySelectorAll('.sub').forEach((el) => { el.textContent = cur().sub; });
+    $('currency').value = state.currency || 0;
+  }
+  $('currency').addEventListener('change', () => { state.currency = parseInt($('currency').value, 10) || 0; save(); applyCurrency(); impEd.draw(); expEd.draw(); runCost(); });
+
+  // Generic 24-bar editor (same interaction as the draw editor): drag to paint, axis frozen during a stroke.
+  function barEditor(o) {
+    const cv = o.canvas, cx = cv.getContext('2d'), tip = o.tip, P = { l: 52, r: 8, t: 10, b: 22 };
+    let plot = { x: 0, y: 0, w: 0, h: 0 }, mx = 1, painting = false, strokeMax = 1;
+    function draw() {
+      const cssW = cv.clientWidth || cv.parentElement.clientWidth, cssH = o.height || 150, dpr = window.devicePixelRatio || 1;
+      cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr); cv.style.height = cssH + 'px';
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, cssW, cssH);
+      plot = { x: P.l, y: P.t, w: cssW - P.l - P.r, h: cssH - P.t - P.b };
+      const vals = o.get();
+      mx = painting ? strokeMax : niceCeil(Math.max(...vals) * 1.25);
+      cx.font = '11px ' + css('--sans'); cx.textAlign = 'right'; cx.textBaseline = 'middle';
+      for (let i = 0; i <= 4; i++) {
+        const y = plot.y + plot.h - i / 4 * plot.h;
+        cx.strokeStyle = css('--grid'); cx.beginPath(); cx.moveTo(plot.x, y + .5); cx.lineTo(plot.x + plot.w, y + .5); cx.stroke();
+        cx.fillStyle = css('--text-2'); cx.fillText(fmtNum(mx * i / 4), plot.x - 6, y);
+      }
+      const bw = plot.w / 24; cx.fillStyle = o.color;
+      for (let h = 0; h < 24; h++) {
+        const bh = Math.min(1, vals[h] / mx) * plot.h, x = plot.x + h * bw + 1, y = plot.y + plot.h - bh, w = bw - 2, r = Math.min(3, bh);
+        cx.beginPath(); cx.moveTo(x, y + bh); cx.lineTo(x, y + r); cx.quadraticCurveTo(x, y, x + r, y); cx.lineTo(x + w - r, y);
+        cx.quadraticCurveTo(x + w, y, x + w, y + r); cx.lineTo(x + w, y + bh); cx.closePath(); cx.fill();
+      }
+      cx.fillStyle = css('--text-2'); cx.textAlign = 'center'; cx.textBaseline = 'top';
+      for (let h = 0; h < 24; h += 3) cx.fillText(String(h).padStart(2, '0'), plot.x + (h + 0.5) * bw, plot.y + plot.h + 6);
+      cx.save(); cx.translate(10, plot.y + plot.h / 2); cx.rotate(-Math.PI / 2); cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(o.unit(), 0, 0); cx.restore();
+    }
+    function at(ev) {
+      const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, h = Math.floor((x - plot.x) / plot.w * 24);
+      const frac = (plot.y + plot.h - y) / plot.h;
+      return (h < 0 || h > 23) ? null : { h, x, y, v: Math.max(0, Math.min(3, frac)) * mx };
+    }
+    function paint(ev) { const c = at(ev); if (!c) return; const step = mx / 100; o.set(c.h, Math.round(c.v / step) * step); draw(); o.onChange(); }
+    function showTip(ev) {
+      const c = at(ev); if (!c) { tip.style.display = 'none'; return; }
+      const v = o.get()[c.h];
+      tip.textContent = String(c.h).padStart(2, '0') + ':00–' + String(c.h + 1).padStart(2, '0') + ':00: ' + fmtNum(v) + ' ' + o.unit();
+      tip.style.display = 'block';
+      const half = tip.offsetWidth / 2 + 4;
+      tip.style.left = Math.max(half, Math.min(cv.clientWidth - half, c.x)) + 'px'; tip.style.top = (plot.y + plot.h - Math.min(1, v / mx) * plot.h) + 'px';
+    }
+    cv.addEventListener('pointerdown', (ev) => { painting = true; strokeMax = mx; cv.setPointerCapture(ev.pointerId); paint(ev); showTip(ev); ev.preventDefault(); });
+    cv.addEventListener('pointermove', (ev) => { if (painting) paint(ev); showTip(ev); });
+    const stop = () => { if (painting) { painting = false; draw(); } };
+    cv.addEventListener('pointerup', stop); cv.addEventListener('pointercancel', stop);
+    cv.addEventListener('pointerleave', () => { tip.style.display = 'none'; });
+    return { draw };
+  }
+  // Average field (live scaling), Flatten button and preset list for a price editor.
+  function priceControls(prefix, key, editor, presets) {
+    const inp = $(prefix + 'Avg'), sel = $(prefix + 'Preset');
+    presets.forEach(([name], i) => { const o = document.createElement('option'); o.value = i; o.textContent = name; sel.appendChild(o); });
+    let ref = null;
+    const refresh = () => { if (document.activeElement !== inp) inp.value = plain(mean(state[key])); };
+    inp.addEventListener('focus', () => { ref = state[key].slice(); });
+    inp.addEventListener('input', () => {
+      const v = parseFloat(inp.value); if (!(v > 0)) return;
+      const base = ref || state[key], avg = mean(base);
+      state[key] = avg > 0 ? base.map((x) => +(x * v / avg).toFixed(3)) : flat(v);
+      save(); editor.draw(); runCost();
+    });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
+    inp.addEventListener('blur', () => { ref = null; inp.value = plain(mean(state[key])); });
+    $(prefix + 'Flat').addEventListener('click', () => { const v = parseFloat(inp.value); if (!(v >= 0)) return; state[key] = flat(v); save(); editor.draw(); runCost(); inp.blur(); inp.value = plain(v); });
+    sel.addEventListener('change', () => { const p = presets[sel.value]; if (p) { state[key] = p[1].slice(); if (p[2] != null) state.standing = p[2]; save(); editor.draw(); runCost(); refresh(); } sel.value = ''; });
+    return { refresh };
+  }
+  const impEd = barEditor({ canvas: $('impEd'), tip: $('imptip'), get: () => state.priceImp, set: (h, v) => { state.priceImp[h] = +v.toFixed(2); }, unit: () => cur().sub + '/kWh', color: css('--s2'), onChange: () => { save(); runCost(); impCtl.refresh(); } });
+  const expEd = barEditor({ canvas: $('expEd'), tip: $('exptip'), get: () => state.priceExp, set: (h, v) => { state.priceExp[h] = +v.toFixed(2); }, unit: () => cur().sub + '/kWh', color: '#008300', onChange: () => { save(); runCost(); expCtl.refresh(); } });
+  const impCtl = priceControls('imp', 'priceImp', impEd, TARIFFS_IMP), expCtl = priceControls('exp', 'priceExp', expEd, TARIFFS_EXP);
+  window.addEventListener('resize', () => { impEd.draw(); expEd.draw(); });
+
+  // Costs: typical UK installed prices unless the user has typed a value.
+  const capKwhTotal = () => battAhTotal() * state.battV / 1000;
+  const solarCostVal = () => state.solarCost != null ? state.solarCost : Math.round(state.kwp * 1100);
+  const battCostVal = () => state.noBatt ? 0 : state.battCost != null ? state.battCost : Math.round(capKwhTotal() * 450);
+  function updateCostInputs() {
+    const set = (id, v, typical, basis) => {
+      const el = $(id); if (document.activeElement !== el) el.value = v;
+      $(id + 'Note').innerHTML = state[id] == null ? 'Typical: ' + basis : 'Manual value. <a class="costReset" data-key="' + id + '">Use typical (' + typical + ')</a>';
+    };
+    set('solarCost', solarCostVal(), gbp(Math.round(state.kwp * 1100)), 'about ' + gbp(1100) + ' per kWp installed (UK)');
+    set('battCost', battCostVal(), gbp(Math.round(capKwhTotal() * 450)), 'about ' + gbp(450) + ' per kWh installed (UK)');
+    $('gridCharge').checked = !!state.gridCharge;
+    for (const id of ['cheapBelow', 'standing', 'inflation', 'horizon']) if (document.activeElement !== $(id)) $(id).value = state[id];
+  }
+  document.addEventListener('click', (e) => { const a = e.target.closest('.costReset'); if (!a) return; state[a.dataset.key] = null; save(); runCost(); });
+  for (const id of ['solarCost', 'battCost']) $(id).addEventListener('input', () => { const v = parseFloat($(id).value); state[id] = isFinite(v) && v >= 0 ? v : null; save(); runCost(); });
+  $('gridCharge').addEventListener('change', () => { state.gridCharge = $('gridCharge').checked; save(); runCost(); });
+  $('cheapBelow').addEventListener('input', () => { state.cheapBelow = Math.max(0, parseFloat($('cheapBelow').value) || 0); save(); runCost(); });
+  $('standing').addEventListener('input', () => { state.standing = Math.max(0, parseFloat($('standing').value) || 0); save(); runCost(); });
+  $('inflation').addEventListener('input', () => { state.inflation = Math.max(-10, Math.min(30, parseFloat($('inflation').value) || 0)); save(); runCost(); });
+  $('horizon').addEventListener('input', () => { state.horizon = Math.max(1, Math.min(40, Math.round(parseFloat($('horizon').value) || 25))); save(); runCost(); });
+
+  // Grid-connected money simulation, hour by hour over a year (second pass reported). Same battery model as the draw simulator.
+  function simulateCost(useBattery) {
+    const load = state.loadW.map((w) => w / 1000), pv = hourlyPv();
+    const usable = useBattery ? capKwhTotal() * state.dod : 0, eta = Math.sqrt(state.battEff), pc = useBattery ? chargeW() / 1000 : 0, pd = useBattery ? dischargeW() / 1000 : 0;
+    const imp = state.priceImp.map((p) => p / 100), exp = state.priceExp.map((p) => p / 100);
+    const months = Array.from({ length: 12 }, () => ({ base: 0, imp: 0, exp: 0, impKwh: 0, expKwh: 0, load: 0, pv: 0, stand: 0 }));
+    let e = usable;
+    for (let year = 0; year < 2; year++) for (let n = 0; n < 365; n++) {
+      const M = months[new Date(2025, 0, n + 1).getMonth()];
+      if (year === 1) M.stand += state.standing / 100;   // standing charge, per day
+      for (let h = 0; h < 24; h++) {
+        const p = pv[n][h], l = load[h], net = p - l; let importKwh = 0, exportKwh = 0, charged = 0;
+        if (net >= 0) { const stored = Math.min(net, (usable - e) / eta, pc); e += stored * eta; charged = stored; exportKwh = net - stored; }
+        else { const need = -net, take = Math.min(need / eta, e, pd); e -= take; importKwh = need - take * eta; }
+        if (usable > 0 && state.gridCharge && state.priceImp[h] <= state.cheapBelow && e < usable) {
+          const add = Math.min((usable - e) / eta, Math.max(0, pc - charged)); e += add * eta; importKwh += add;
+        }
+        if (year === 1) { M.base += l * imp[h]; M.imp += importKwh * imp[h]; M.exp += exportKwh * exp[h]; M.impKwh += importKwh; M.expKwh += exportKwh; M.load += l; M.pv += p; }
+      }
+    }
+    return months;
+  }
+  const costMonthly = new Chart($('costMonthly'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [
+      { label: 'Without system', data: [], borderColor: css('--text'), backgroundColor: css('--text'), borderWidth: 3 },
+      { label: 'Solar only', data: [], borderColor: css('--s1'), backgroundColor: css('--s1'), borderDash: [6, 4] },
+      { label: 'Solar + battery', data: [], borderColor: '#008300', backgroundColor: '#008300' },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+      elements: { line: { borderWidth: 2, tension: 0.3, borderJoinStyle: 'round' }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card'), hoverBorderWidth: 1, hoverBorderColor: css('--card') } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: legendOpts, tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + gbp(c.parsed.y) } } },
+      scales: { x: { grid: { display: false } }, y: { grid: { color: (c) => c.tick.value === 0 ? css('--text-2') : gridColor }, border: { display: false }, title: { display: true, text: '£ per month' }, ticks: { callback: (v) => gbp(v) } } } }
+  });
+  const costFlow = new Chart($('costFlow'), {
+    type: 'line',
+    data: { datasets: [
+      { label: 'Solar only', data: [], borderColor: css('--s1'), backgroundColor: css('--s1'), borderDash: [6, 4] },
+      { label: 'Solar + battery', data: [], borderColor: '#008300', backgroundColor: '#008300' },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, parsing: false,
+      elements: { line: { borderWidth: 2, tension: 0 }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card') } },
+      interaction: { mode: 'index', intersect: false, axis: 'x' },
+      plugins: { legend: legendOpts, tooltip: { callbacks: { title: (items) => 'Year ' + items[0].parsed.x, label: (c) => ' ' + c.dataset.label + ': ' + gbp(c.parsed.y) } } },
+      scales: { x: { type: 'linear', min: 0, grid: { display: false }, title: { display: true, text: 'Years' }, ticks: { stepSize: 5 } },
+        y: { grid: { color: (c) => c.tick.value === 0 ? css('--text-2') : gridColor }, border: { display: false }, title: { display: true, text: '£ cumulative' }, ticks: { callback: (v) => gbp(v) } } } }
+  });
+  function runCost() {
+    updateCostInputs();
+    const cheap = state.priceImp.map((p, h) => p <= state.cheapBelow ? h : -1).filter((h) => h >= 0), minP = Math.min(...state.priceImp);
+    $('gridNote').textContent = !state.gridCharge ? '' : cheap.length ? cheap.length + ' hour' + (cheap.length > 1 ? 's' : '') + ' a day qualify (' + cheap.map((h) => String(h).padStart(2, '0')).join(', ') + ')'
+      : 'No hour is that cheap on the current import prices, so this has no effect. Cheapest hour: ' + fmtNum(minP) + ' ' + cur().sub + '/kWh.';
+    const B = simulateCost(true), S = simulateCost(false), sum = (arr, k) => arr.reduce((a, M) => a + M[k], 0);
+    const stand = sum(B, 'stand'), base = sum(B, 'base') + stand, billB = sum(B, 'imp') - sum(B, 'exp') + stand, billS = sum(S, 'imp') - sum(S, 'exp') + stand;
+    const savB = base - billB, savS = base - billS, costS = solarCostVal(), costB = costS + battCostVal();
+    const N = state.horizon, inf = state.inflation / 100;
+    const flow = (cost, sav) => { const out = [{ x: 0, y: -cost }]; let c = -cost; for (let y = 1; y <= N; y++) { c += sav * Math.pow(1 + inf, y - 1); out.push({ x: y, y: c }); } return out; };
+    const fS = flow(costS, savS), fB = flow(costB, savB);
+    const payback = (f) => { for (let i = 1; i < f.length; i++) if (f[i].y >= 0) { const a = f[i - 1].y, b = f[i].y; return f[i - 1].x + (b > a ? -a / (b - a) : 0); } return null; };
+    const pbS = payback(fS), pbB = payback(fB), yrs = (p) => p == null ? 'not within ' + N + ' years' : fmtNum(p) + ' years';
+    const loadK = sum(B, 'load'), pvK = sum(B, 'pv'), impK = sum(B, 'impKwh'), expK = sum(B, 'expKwh');
+    $('cSaving').innerHTML = gbpHtml(savB); $('cSavingNote').textContent = 'Solar only: ' + gbp(savS) + ' per year';
+    $('cPayback').textContent = pbB == null ? '–' : fmtNum(pbB); $('cPaybackNote').textContent = (pbB == null ? 'Not within ' + N + ' years. ' : '') + 'Solar only: ' + yrs(pbS);
+    $('cBill').innerHTML = gbpHtml(billB); $('cBillNote').textContent = 'Without a system: ' + gbp(base) + ' per year';
+    $('cExport').innerHTML = gbpHtml(sum(B, 'exp')); $('cExportNote').textContent = fmtNum(expK) + ' kWh exported per year';
+    $('cSelf').textContent = loadK > 0 ? Math.round((1 - impK / loadK) * 100) : 0;
+    $('cSelfNote').textContent = 'Self-consumption ' + (pvK > 0 ? Math.round((1 - expK / pvK) * 100) : 0) + ' % of production';
+    // internal rate of return of the cash flow over the horizon: outlay at year 0, inflating savings for N years
+    const irr = (f) => {
+      const npv = (r) => f.reduce((a, p) => a + p.y0 / Math.pow(1 + r, p.x), 0);
+      let lo = -0.9, hi = 5; if (npv(lo) * npv(hi) > 0) return null;
+      for (let i = 0; i < 80; i++) { const mid = (lo + hi) / 2; if (npv(lo) * npv(mid) <= 0) hi = mid; else lo = mid; }
+      return (lo + hi) / 2;
+    };
+    const yearly = (cost, sav) => [{ x: 0, y0: -cost }].concat(Array.from({ length: N }, (_, i) => ({ x: i + 1, y0: sav * Math.pow(1 + inf, i) })));
+    const rB = costB > 0 ? irr(yearly(costB, savB)) : null, rS = costS > 0 ? irr(yearly(costS, savS)) : null, pct = (r) => r == null ? '–' : (r < 0 ? '−' : '') + fmtNum(Math.abs(r) * 100);
+    $('cRoi').textContent = pct(rB); $('cRoiNote').textContent = 'Internal rate of return over ' + N + ' years. Solar only: ' + pct(rS) + ' %';
+    $('cNet').innerHTML = gbpHtml(fB[N].y); $('cNetNote').textContent = 'Solar + battery over ' + N + ' years; solar only ' + gbp(fS[N].y);
+    costMonthly.data.datasets[0].data = B.map((M) => M.base + M.stand);
+    costMonthly.data.datasets[1].data = S.map((M) => M.imp - M.exp + M.stand);
+    costMonthly.data.datasets[2].data = B.map((M) => M.imp - M.exp + M.stand);
+    costMonthly.update();
+    costFlow.data.datasets[0].data = fS; costFlow.data.datasets[1].data = fB; costFlow.options.scales.x.max = N; costFlow.update();
+    let rows = '<tr><th>Month</th><th>Without system</th><th>Solar only</th><th>Solar + battery</th><th>Imported (kWh)</th><th>Exported (kWh)</th></tr>';
+    B.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + gbp(M.base + M.stand) + '</td><td>' + gbp(S[m].imp - S[m].exp + M.stand) + '</td><td>' + gbp(M.imp - M.exp + M.stand) + '</td><td>' + fmtNum(M.impKwh) + '</td><td>' + fmtNum(M.expKwh) + '</td></tr>'; });
+    rows += '<tr><th>Year</th><th>' + gbp(base) + '</th><th>' + gbp(billS) + '</th><th>' + gbp(billB) + '</th><th>' + fmtNum(impK) + '</th><th>' + fmtNum(expK) + '</th></tr>';
+    $('costTable').innerHTML = rows;
+  }
+  applyCurrency(); impEd.draw(); expEd.draw(); impCtl.refresh(); expCtl.refresh();
+
+  // ---------- outputs ----------
+  function updateOutputs() {
+    const sys = state.kwp * state.pr;
+    const selM = new Array(12).fill(0), optM = new Array(12).fill(0);
+    const sel = annual(fine, state.tilt, state.az, state.albedo, selM);
+    annual(fine, opt.tilt, opt.az, state.albedo, optM);
+    const optAnnual = opt.kwhm2;
+    const ai = unitIdx(sel * sys);
+    $('tAnnual').textContent = fmtNum(sel * sys / unitDiv(ai));
+    $('tAnnualU').textContent = E_UNITS[ai] + '/yr';
+    $('tYield').textContent = Math.round(sel * state.pr).toLocaleString();
+    $('tShare').textContent = (sel / optAnnual * 100).toFixed(1);
+    $('tOpt').textContent = opt.tilt + '° tilt, ' + opt.az + '° ' + compassName(opt.az);
+    // monthly chart and table share one energy unit chosen from the largest bar
+    const selK = selM.map((v) => v * sys), optK = optM.map((v) => v * sys);
+    const ei = unitIdx(Math.max(...selK, ...optK)), ed = unitDiv(ei); eUnit = E_UNITS[ei];
+    monthly.data.datasets[0].data = selK.map((v) => v / ed);
+    monthly.data.datasets[1].data = optK.map((v) => v / ed);
+    monthly.options.scales.y.title.text = eUnit + ' per month';
+    monthly.update();
+    const kArr = kByMonth();
+    // best, average and worst day of the year for this orientation (by daily energy)
+    let best = null, worst = null, bestE = -1, worstE = Infinity, avg = null;
+    for (let n = 1; n <= 365; n++) {
+      const p = dayProfile(state.lat, n, state.tilt, state.az, kArr, state.albedo, state.kwp, state.pr);
+      const e = p.reduce((a, q) => a + q.y, 0);
+      if (!avg) avg = p.map((q) => ({ x: q.x, y: 0 }));
+      p.forEach((q, i) => { avg[i].y += q.y / 365; });
+      if (e > bestE) { bestE = e; best = { n, p }; }
+      if (e < worstE) { worstE = e; worst = { n, p }; }
+    }
+    const dayName = (n) => { const d = new Date(2025, 0, n); return d.getDate() + ' ' + MONTHS[d.getMonth()]; };
+    daily.data.datasets[0].label = 'Best day (' + dayName(best.n) + ')';
+    daily.data.datasets[2].label = 'Worst day (' + dayName(worst.n) + ')';
+    const profiles = [best.p, avg, worst.p];
+    // y-axis pinned to the year's peak power at the optimal orientation, so the scale stays put while exploring
+    const peakKw = opt.peak / 1000 * sys;
+    const pi = unitIdx(peakKw), pd = unitDiv(pi); pUnit = P_UNITS[pi];
+    const pk = peakKw / pd, nice = Math.pow(10, Math.floor(Math.log10(pk))) / 5;
+    profiles.forEach((p, i) => { daily.data.datasets[i].data = p.map((q) => ({ x: q.x, y: q.y / pd })); });
+    daily.options.scales.y.title.text = pUnit;
+    daily.options.scales.y.max = Math.ceil(pk * 1.05 / nice) * nice;
+    daily.update();
+    let rows = '<tr><th>Month</th><th>Selected (' + eUnit + ')</th><th>Optimal (' + eUnit + ')</th></tr>';
+    for (let m = 0; m < 12; m++) rows += '<tr><td>' + MONTHS[m] + '</td><td>' + fmtNum(selK[m] / ed) + '</td><td>' + fmtNum(optK[m] / ed) + '</td></tr>';
+    rows += '<tr><th>Year</th><th>' + fmtNum(sel * sys / ed) + '</th><th>' + fmtNum(optAnnual * sys / ed) + '</th></tr>';
+    $('monthTable').innerHTML = rows;
+    drawRose();
+    drawArrow();
+    drawHeat();
+    drawLoad();
+    runSim();
+  }
+
+  // Collapsible sections: click the title; the state is remembered on this browser.
+  let collapsed = {};
+  try { collapsed = JSON.parse(localStorage.getItem('solar-collapsed') || '{}'); } catch (e) {}
+  for (const id of ['simCard', 'costCard']) {
+    const card = $(id), head = card.querySelector('.cardhead h2, h2.cardhead');
+    const apply = () => card.classList.toggle('collapsed', !!collapsed[id]);
+    apply();
+    head.addEventListener('click', () => {
+      collapsed[id] = !collapsed[id];
+      try { localStorage.setItem('solar-collapsed', JSON.stringify(collapsed)); } catch (e) {}
+      apply();
+      if (!collapsed[id]) { window.dispatchEvent(new Event('resize')); [monthly, daily, simMonthly, simSoc, costMonthly, costFlow].forEach((c) => c.resize()); }
+    });
+  }
+  // open the panel's Advanced section when it holds a non-default value, so a manual setting is never hidden
+  if (Math.abs(state.pr - defaults.pr) > 0.005 || Math.abs(state.albedo - defaults.albedo) > 0.005 || !state.clearAuto) $('advPanel').open = true;
+  recomputeGrid();
+  updateOutputs();
+  updateClearMark();
+  if (!climateMatches()) fetchClimate();
+})();
+</script>
+</body>
+</html>
