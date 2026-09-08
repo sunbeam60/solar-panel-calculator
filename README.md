@@ -2,6 +2,8 @@
 
 [Solar Panel Calculator - run it here](https://sunbeam60.github.io/solar-panel-calculator/)
 
+<img width="1069" height="822" alt="image" src="https://github.com/user-attachments/assets/1fb64fca-5560-4ea8-9265-b6bba347d477" />
+
 A single-file web app for sizing a solar panel system. Pick a location on the map, set the panel tilt and direction, and see the estimated output, then test whether a battery keeps a load powered through the year and what the system saves against your tariff.
 
 Open `index.html` in a browser. Everything runs client side; the page needs internet access for the map tiles, place search, the NASA POWER climate data and the two chart and map libraries loaded from CDNs.
