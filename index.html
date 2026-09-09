@@ -252,37 +252,37 @@
       <div class="battery">
         <div class="ctl wide keep"><label for="battPreset">Battery</label>
           <div class="row"><input type="number" id="battN" min="1" step="1" style="width:56px" title="Number of identical modules or cells in parallel"> ×
-            <select id="battPreset" title="Sets capacity, voltage, usable depth and round-trip efficiency for a known battery">
+            <select id="battPreset" title="Sets capacity, voltage, usable depth, round-trip efficiency and charge/discharge limits for a known battery">
               <option value="">Preset…</option>
               <optgroup label="Cells">
-                <option data-cap="2000" data-unit="mAh" data-v="1.2" data-dod="0.8" data-eff="0.7">AA NiMH · 2,000 mAh</option>
-                <option data-cap="3000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92">18650 Li-ion · 3,000 mAh</option>
-                <option data-cap="5000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92">21700 Li-ion · 5,000 mAh</option>
-                <option data-cap="6000" data-unit="mAh" data-v="3.2" data-dod="0.9" data-eff="0.95">32700 LiFePO₄ · 6,000 mAh</option>
-                <option data-cap="20000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92">USB power bank · 20,000 mAh</option>
+                <option data-cap="2000" data-unit="mAh" data-v="1.2" data-dod="0.8" data-eff="0.7" data-chg="1.2" data-dis="2.4">AA NiMH · 2,000 mAh</option>
+                <option data-cap="3000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92" data-chg="5.5" data-dis="37">18650 Li-ion · 3,000 mAh</option>
+                <option data-cap="5000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92" data-chg="9.3" data-dis="37">21700 Li-ion · 5,000 mAh</option>
+                <option data-cap="6000" data-unit="mAh" data-v="3.2" data-dod="0.9" data-eff="0.95" data-chg="9.6" data-dis="38">32700 LiFePO₄ · 6,000 mAh</option>
+                <option data-cap="20000" data-unit="mAh" data-v="3.7" data-dod="0.8" data-eff="0.92" data-chg="18" data-dis="22">USB power bank · 20,000 mAh</option>
               </optgroup>
               <optgroup label="Portable power stations (LiFePO₄)">
-                <option data-cap="768" data-unit="Wh" data-v="25.6" data-dod="0.9" data-eff="0.95">EcoFlow River 2 Pro · 768 Wh</option>
-                <option data-cap="1024" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">EcoFlow Delta 2 · 1 kWh</option>
-                <option data-cap="1070" data-unit="Wh" data-v="25.6" data-dod="0.9" data-eff="0.95">Jackery Explorer 1000 v2 · 1.07 kWh</option>
-                <option data-cap="2048" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">Bluetti AC200L · 2 kWh</option>
-                <option data-cap="4096" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">EcoFlow Delta Pro 3 · 4 kWh</option>
-                <option data-cap="6144" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">EcoFlow Delta Pro Ultra, one pack · 6.1 kWh</option>
+                <option data-cap="768" data-unit="Wh" data-v="25.6" data-dod="0.9" data-eff="0.95" data-chg="940" data-dis="800">EcoFlow River 2 Pro · 768 Wh</option>
+                <option data-cap="1024" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95" data-chg="1200" data-dis="1800">EcoFlow Delta 2 · 1 kWh</option>
+                <option data-cap="1070" data-unit="Wh" data-v="25.6" data-dod="0.9" data-eff="0.95" data-chg="1000" data-dis="1500">Jackery Explorer 1000 v2 · 1.07 kWh</option>
+                <option data-cap="2048" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95" data-chg="2400" data-dis="2400">Bluetti AC200L · 2 kWh</option>
+                <option data-cap="4096" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95" data-chg="3000" data-dis="3600">EcoFlow Delta Pro 3 · 4 kWh</option>
+                <option data-cap="6144" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95" data-chg="3000" data-dis="7200">EcoFlow Delta Pro Ultra, one pack · 6.1 kWh</option>
               </optgroup>
               <optgroup label="Home, stackable modules">
-                <option data-cap="4800" data-unit="Wh" data-v="48" data-dod="0.9" data-eff="0.95">Pylontech US5000, per module · 4.8 kWh</option>
-                <option data-cap="5000" data-unit="Wh" data-v="48" data-dod="0.9" data-eff="0.95">Enphase IQ 5P, per unit · 5 kWh</option>
-                <option data-cap="5000" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95">EcoFlow PowerOcean, per module · 5 kWh</option>
-                <option data-cap="5000" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95">Anker SOLIX X1, per module · 5 kWh</option>
-                <option data-cap="4960" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95">Bluetti EP600 B500, per module · 5 kWh</option>
-                <option data-cap="10200" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95">BYD Battery-Box HVS 10.2 · 10.2 kWh</option>
-                <option data-cap="13500" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92">Tesla Powerwall 3 · 13.5 kWh</option>
+                <option data-cap="4800" data-unit="Wh" data-v="48" data-dod="0.9" data-eff="0.95" data-chg="3800" data-dis="3800">Pylontech US5000, per module · 4.8 kWh</option>
+                <option data-cap="5000" data-unit="Wh" data-v="48" data-dod="0.9" data-eff="0.95" data-chg="3840" data-dis="3840">Enphase IQ 5P, per unit · 5 kWh</option>
+                <option data-cap="5000" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95" data-chg="2500" data-dis="2500">EcoFlow PowerOcean, per module · 5 kWh</option>
+                <option data-cap="5000" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95" data-chg="3000" data-dis="3000">Anker SOLIX X1, per module · 5 kWh</option>
+                <option data-cap="4960" data-unit="Wh" data-v="51.2" data-dod="0.9" data-eff="0.95" data-chg="3000" data-dis="3000">Bluetti EP600 B500, per module · 5 kWh</option>
+                <option data-cap="10200" data-unit="Wh" data-v="400" data-dod="0.9" data-eff="0.95" data-chg="10200" data-dis="10200">BYD Battery-Box HVS 10.2 · 10.2 kWh</option>
+                <option data-cap="13500" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92" data-chg="5000" data-dis="11500">Tesla Powerwall 3 · 13.5 kWh</option>
               </optgroup>
               <optgroup label="Car, vehicle-to-load">
-                <option data-cap="60000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.95">BYD Atto 3 · 60 kWh</option>
-                <option data-cap="64000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92">MG4 · 64 kWh</option>
-                <option data-cap="77400" data-unit="Wh" data-v="800" data-dod="0.8" data-eff="0.92">Hyundai Ioniq 5 / Kia EV6 · 77 kWh</option>
-                <option data-cap="131000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92">Ford F-150 Lightning · 131 kWh</option>
+                <option data-cap="60000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.95" data-chg="7000" data-dis="3300">BYD Atto 3 · 60 kWh</option>
+                <option data-cap="64000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92" data-chg="7000" data-dis="2200">MG4 · 64 kWh</option>
+                <option data-cap="77400" data-unit="Wh" data-v="800" data-dod="0.8" data-eff="0.92" data-chg="7000" data-dis="3600">Hyundai Ioniq 5 / Kia EV6 · 77 kWh</option>
+                <option data-cap="131000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92" data-chg="7000" data-dis="9600">Ford F-150 Lightning · 131 kWh</option>
               </optgroup>
             </select>
             <label title="Run every simulation without any storage"><input type="checkbox" id="noBatt"> No battery</label>
@@ -1196,6 +1196,8 @@
     state.noBatt = false;
     state.battCap = parseFloat(o.dataset.cap); state.battCapUnit = o.dataset.unit; state.battV = parseFloat(o.dataset.v);
     state.dod = parseFloat(o.dataset.dod); state.battEff = parseFloat(o.dataset.eff);   // chemistry defaults ride along
+    const n = Math.max(1, state.battN || 1);   // limits are per module; modules in parallel add up
+    state.battChargeW = parseFloat(o.dataset.chg) * n; state.battDischargeW = parseFloat(o.dataset.dis) * n;
     $('battCap').value = state.battCap; $('battCapUnit').value = state.battCapUnit; $('battV').value = state.battV;
     for (const id of ['dod', 'battEff']) { $(id).value = state[id]; $(id + 'Out').textContent = sliders[id].fmt(state[id]); }
     updatePills(); save(); runSim();
