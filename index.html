@@ -52,6 +52,9 @@
   .ctl { display: grid; grid-template-columns: 120px 1fr 72px; gap: 10px; align-items: center; margin: 8px 0; }
   .ctl label { color: var(--text-2); }
   .ctl output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .ctl.size { grid-template-columns: 120px 1fr auto; }
+  .sizeVal { display: flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; }
+  .sizeVal input { width: 64px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; padding: 4px 6px; }
   .unit-cycle { cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 3px; user-select: none; }
   .unit-cycle:hover { color: var(--accent); text-decoration-color: var(--accent); }
   input[type=range] { width: 100%; accent-color: var(--accent); display: block; }
@@ -160,10 +163,12 @@
   </section>
 
   <section class="card">
-    <h2>Panel &amp; system</h2>
+    <div class="row" style="align-items:baseline"><h2>Panel &amp; system</h2>
+      <label style="margin-left:auto" title="Run the draw simulator and the cost section without any panels, so a battery can only charge from the grid. The orientation study below is unaffected."><input type="checkbox" id="noSolar"> No solar</label></div>
     <div class="ctl"><label for="tilt">Tilt</label><input type="range" id="tilt" min="0" max="90" step="1"><output id="tiltOut"></output></div>
     <div class="ctl"><label for="az">Direction (azimuth)</label><input type="range" id="az" min="0" max="359" step="1"><output id="azOut"></output></div>
-    <div class="ctl"><label for="kwp">System size</label><input type="range" id="kwp" min="1" max="20" step="0.5"><output id="kwpOut" class="unit-cycle" title="Click to change unit (Wp, kWp, MWp, GWp)"></output></div>
+    <div class="ctl size"><label for="kwp">System size</label><input type="range" id="kwp" min="1" max="20" step="0.5">
+      <span class="sizeVal"><input type="number" id="kwpIn" min="0" step="any" title="Type an exact system size; the slider moves in coarser steps"><span id="kwpUnit" class="unit-cycle" title="Click to change unit (Wp, kWp, MWp, GWp)"></span></span></div>
     <details class="adv" id="advPanel"><summary>Advanced</summary>
     <div class="ctl"><label for="pr">Performance ratio</label>
       <div class="slwrap"><input type="range" id="pr" min="0.5" max="1" step="0.01" aria-describedby="prPop">
@@ -318,7 +323,7 @@
     </div>
     <div class="simcharts">
       <div><div class="hint" style="margin-bottom:4px">Monthly energy balance</div><div class="chartbox"><canvas id="simMonthly"></canvas></div></div>
-      <div><div class="hint" style="margin-bottom:4px">Battery state of charge through the year</div><div class="chartbox"><canvas id="simSoc"></canvas></div></div>
+      <div><div class="hint" style="margin-bottom:4px">Battery state of charge through the year <span id="socNote"></span></div><div class="chartbox"><canvas id="simSoc"></canvas></div></div>
     </div>
     <details><summary>Show monthly table</summary><table id="simTable"></table></details>
   </section>
@@ -339,7 +344,7 @@
       </div>
       <div class="tiles">
         <div class="tile hero"><div class="label">Annual saving</div><div class="value"><span id="cSaving">–</span><small>/yr</small></div><div class="hint" id="cSavingNote"></div></div>
-        <div class="tile"><div class="label">Payback, solar + battery</div><div class="value"><span id="cPayback">–</span><small>years</small></div><div class="hint" id="cPaybackNote"></div></div>
+        <div class="tile"><div class="label" id="cPaybackLabel">Payback, solar + battery</div><div class="value"><span id="cPayback">–</span><small>years</small></div><div class="hint" id="cPaybackNote"></div></div>
         <div class="tile"><div class="label">Bill with system</div><div class="value"><span id="cBill">–</span><small>/yr</small></div><div class="hint" id="cBillNote"></div></div>
         <div class="tile"><div class="label">Export income</div><div class="value"><span id="cExport">–</span><small>/yr</small></div><div class="hint" id="cExportNote"></div></div>
         <div class="tile"><div class="label">Self-sufficiency</div><div class="value"><span id="cSelf">–</span><small>%</small></div><div class="hint" id="cSelfNote"></div></div>
@@ -382,7 +387,7 @@
   const LOAD_UNITS = [{ u: 'µW', f: 1e-6 }, { u: 'mW', f: 1e-3 }, { u: 'W', f: 1 }, { u: 'kW', f: 1e3 }, { u: 'MW', f: 1e6 }, { u: 'GW', f: 1e9 }];
   const defaults = { lat: 55.676, lon: 12.568, tilt: 35, az: 180, kwp: 5, pr: 0.8, clear: 0.65, albedo: 0.2, layer: 'Map', clearAuto: true, climate: null, sizeUnit: 1,
     loadW: [300, 250, 250, 250, 250, 300, 600, 800, 500, 400, 400, 450, 500, 400, 400, 450, 600, 1000, 1400, 1300, 1000, 700, 500, 350], loadUnit: 3,
-    noBatt: false, battN: 1, battCap: 200, battCapUnit: 'Ah', battV: 48, dod: 0.8, battEff: 0.9,
+    noBatt: false, noSolar: false, battN: 1, battCap: 200, battCapUnit: 'Ah', battV: 48, dod: 0.8, battEff: 0.9,
     priceImp: new Array(24).fill(25), priceExp: new Array(24).fill(15), solarCost: null, battCost: null, battChargeW: null, battDischargeW: null,
     gridCharge: false, cheapBelow: 10, standing: 54, inflation: 3, horizon: 25, currency: 0 };
   let state = Object.assign({}, defaults);
@@ -405,11 +410,11 @@
     const p = new URLSearchParams(), su = sizeUnit();
     p.set('lat', state.lat.toFixed(4)); p.set('lon', state.lon.toFixed(4));
     p.set('tilt', state.tilt); p.set('az', state.az);
-    p.set('size', +(state.kwp / su.f).toPrecision(4) + su.u);
+    p.set('size', +(state.kwp / su.f).toPrecision(6) + su.u);
     p.set('eff', state.pr); p.set('clear', state.clear); if (!state.clearAuto) p.set('manual', '1');
     p.set('alb', state.albedo); if (state.layer === 'Satellite') p.set('sat', '1');
     p.set('draw', state.loadW.map((w) => +w.toPrecision(4)).join(',')); p.set('du', loadUnit().u.replace('µ', 'u'));
-    p.set('batt', +state.battCap.toPrecision(5) + state.battCapUnit); p.set('v', state.battV); if (state.battN > 1) p.set('bn', state.battN); if (state.noBatt) p.set('nb', '1');
+    p.set('batt', +state.battCap.toPrecision(5) + state.battCapUnit); p.set('v', state.battV); if (state.battN > 1) p.set('bn', state.battN); if (state.noBatt) p.set('nb', '1'); if (state.noSolar) p.set('ns', '1');
     p.set('dod', state.dod); p.set('beff', state.battEff);
     p.set('pi', state.priceImp.map((v) => +v.toFixed(2)).join(',')); p.set('pe', state.priceExp.map((v) => +v.toFixed(2)).join(','));
     if (state.solarCost != null) p.set('sc', state.solarCost); if (state.battCost != null) p.set('bc', state.battCost); if (state.battChargeW != null) p.set('bcw', +state.battChargeW.toPrecision(5)); if (state.battDischargeW != null) p.set('bdw', +state.battDischargeW.toPrecision(5));
@@ -429,7 +434,7 @@
     const draw = (p.get('draw') || '').split(',').map(Number);
     if (draw.length === 24 && draw.every((v) => isFinite(v) && v >= 0)) state.loadW = draw;
     const du = LOAD_UNITS.findIndex((u) => u.u.replace('µ', 'u') === p.get('du')); if (du >= 0) state.loadUnit = du;
-    state.battN = Math.max(1, Math.round(num('bn', 1, 1e6) || 1)); state.noBatt = p.has('nb');
+    state.battN = Math.max(1, Math.round(num('bn', 1, 1e6) || 1)); state.noBatt = p.has('nb'); state.noSolar = p.has('ns');
     const batt = (p.get('batt') || '').match(/^([\d.]+)(mAh|Ah|Wh)$/);
     if (batt) { state.battCap = parseFloat(batt[1]); state.battCapUnit = batt[2]; }
     set('battV', num('v', 0.1, 1e6)); set('dod', num('dod', 0.2, 1)); set('battEff', num('beff', 0.5, 1));
@@ -608,14 +613,22 @@
     const names = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
     return names[Math.round(a / 22.5) % 16];
   }
+  // The size readout is a number box (any value, not just the slider's steps) plus the clickable unit.
+  function showSize() {
+    const u = sizeUnit(), inp = $('kwpIn');
+    if (document.activeElement !== inp) inp.value = +(state.kwp / u.f).toPrecision(6);
+    $('kwpUnit').textContent = u.u;
+  }
+  sliders.kwp.show = showSize;
+  const showVal = (id) => sliders[id].show ? sliders[id].show() : ($(id + 'Out').textContent = sliders[id].fmt(state[id]));
   applySizeUnit();
   for (const id in sliders) {
     const el = $(id);
     el.value = (sliders[id].toSlider || ident)(state[id]);
-    $(id + 'Out').textContent = sliders[id].fmt(state[id]);
+    showVal(id);
     el.addEventListener('input', () => {
       state[id] = (sliders[id].fromSlider || ident)(parseFloat(el.value));
-      $(id + 'Out').textContent = sliders[id].fmt(state[id]);
+      showVal(id);
       if (id === 'clear') { state.clearAuto = !!state.climate && Math.abs(state.clear - state.climate.avg) < 0.005; updateClearMark(); }
       if (id in RESET_NOTES) updateResetNote(id);
       updatePills();
@@ -647,16 +660,22 @@
   }));
   updatePills();
 
-  // Click the size value to cycle the unit; the number stays, the unit changes.
-  $('kwpOut').addEventListener('click', () => {
-    const n = parseFloat($('kwp').value);
+  // Click the size unit to cycle it; the number stays, the unit changes.
+  $('kwpUnit').addEventListener('click', () => {
+    const n = state.kwp / sizeUnit().f;
     state.sizeUnit = (state.sizeUnit + 1) % SIZE_UNITS.length;
     const u = sizeUnit(); applySizeUnit();
-    const v = Math.min(u.max, Math.max(u.min, Math.round(n / u.step) * u.step));
-    $('kwp').value = v; state.kwp = v * u.f;
-    $('kwpOut').textContent = sliders.kwp.fmt(state.kwp);
+    state.kwp = n * u.f; $('kwp').value = n; showSize();
     save(); updateOutputs();
   });
+  // Type an exact size: the slider follows as far as its range allows, the value itself is not rounded.
+  $('kwpIn').addEventListener('input', () => {
+    const n = parseFloat($('kwpIn').value); if (!(n > 0)) return;
+    state.kwp = n * sizeUnit().f; $('kwp').value = n; $('kwpUnit').textContent = sizeUnit().u;
+    save(); updateOutputs();
+  });
+  $('kwpIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('kwpIn').blur(); });
+  $('kwpIn').addEventListener('blur', showSize);
 
   // ---------- output units (scale kWh -> MWh -> GWh -> TWh, kW -> MW -> GW -> TW) ----------
   // Values are computed in kWh / kW and shown in the unit matching the system size: Wp -> Wh/W, kWp -> kWh/kW, MWp -> MWh/MW, GWp -> GWh/GW.
@@ -1158,7 +1177,7 @@
   function battAhTotal() { return state.noBatt ? 0 : battAh() * Math.max(1, state.battN || 1); }
   function updateBattUI() {
     const ah = battAh(), n = Math.max(1, state.battN || 1), parts = [];
-    $('noBatt').checked = !!state.noBatt; document.querySelector('.battery').classList.toggle('off', !!state.noBatt);
+    $('noBatt').checked = !!state.noBatt; $('noSolar').checked = !!state.noSolar; document.querySelector('.battery').classList.toggle('off', !!state.noBatt);
     updateLimitUI();
     if (state.battCapUnit !== 'mAh') parts.push(fmtNum(ah * 1000) + ' mAh');
     if (state.battCapUnit !== 'Ah') parts.push(fmtNum(ah) + ' Ah');
@@ -1191,6 +1210,7 @@
   }
   document.addEventListener('click', (e) => { const a = e.target.closest('.limReset'); if (!a) return; state[a.dataset.key] = null; save(); runSim(); });
   $('noBatt').addEventListener('change', () => { state.noBatt = $('noBatt').checked; save(); runSim(); });
+  $('noSolar').addEventListener('change', () => { state.noSolar = $('noSolar').checked; save(); runSim(); });
   $('battPreset').addEventListener('change', () => {
     const o = $('battPreset').selectedOptions[0]; if (!o || !o.dataset.cap) return;
     state.noBatt = false;
@@ -1219,10 +1239,11 @@
   // Average system power (kW) for every hour of every day of the year, cached until the panel setup changes.
   let pvCache = { key: '', pv: null };
   function hourlyPv() {
-    const key = [state.lat, state.tilt, state.az, state.kwp, state.pr, state.albedo, state.clear, state.climate && state.climate.avg].join('|');
+    const key = [state.lat, state.tilt, state.az, state.kwp, state.pr, state.albedo, state.clear, state.climate && state.climate.avg, state.noSolar].join('|');
     if (pvCache.key === key) return pvCache.pv;
     const kArr = kByMonth(), pv = new Array(365);
     for (let n = 1; n <= 365; n++) {
+      if (state.noSolar) { pv[n - 1] = new Float64Array(24); continue; }
       const p = dayPower(state.lat, n, state.tilt, state.az, kArr, state.albedo, state.kwp, state.pr), day = new Float64Array(24);
       for (let h = 0; h < 24; h++) { let s = 0; for (let k = 0; k < 6; k++) s += p(h + (k + 0.5) / 6); day[h] = s / 6; }
       pv[n - 1] = day;
@@ -1237,10 +1258,10 @@
     const capKwh = battAhTotal() * state.battV / 1000, usable = capKwh * state.dod, eta = Math.sqrt(state.battEff);
     const pc = chargeW() / 1000, pd = dischargeW() / 1000;   // kW limits from the charger and inverter
     const pv = hourlyPv();
-    const months = Array.from({ length: 12 }, () => ({ pv: 0, load: 0, short: 0, curtailed: 0, outageHours: 0, outageDays: 0, minSoc: 1 }));
-    const socMin = [], socMax = []; let e = usable;
+    const months = Array.from({ length: 12 }, () => ({ pv: 0, load: 0, short: 0, curtailed: 0, outageHours: 0, outageDays: 0 }));
+    let e = usable;
     for (let year = 0; year < 2; year++) for (let n = 0; n < 365; n++) {
-      const M = months[new Date(2025, 0, n + 1).getMonth()]; let dayOut = false, dayMin = 1, dayMax = 0;
+      const M = months[new Date(2025, 0, n + 1).getMonth()]; let dayOut = false;
       for (let h = 0; h < 24; h++) {
         const net = pv[n][h] - load[h]; let short = 0, curt = 0;
         if (net >= 0) { const room = (usable - e) / eta, stored = Math.min(net, room, pc); e += stored * eta; curt = net - stored; }
@@ -1248,12 +1269,11 @@
         if (year === 1) {
           M.pv += pv[n][h]; M.load += load[h]; M.short += short; M.curtailed += curt;
           if (short > 1e-9) { M.outageHours++; dayOut = true; }
-          const frac = usable > 0 ? e / usable : 0; if (frac < dayMin) dayMin = frac; if (frac > dayMax) dayMax = frac;
         }
       }
-      if (year === 1) { if (dayOut) M.outageDays++; if (dayMin < M.minSoc) M.minSoc = dayMin; socMin.push(dayMin); socMax.push(dayMax); }
+      if (year === 1 && dayOut) M.outageDays++;
     }
-    return { months, socMin, socMax, usable, capKwh, avgLoad: load.reduce((a, b) => a + b, 0) / 24 };
+    return { months, usable, capKwh, avgLoad: load.reduce((a, b) => a + b, 0) / 24 };
   }
   const MONTH_STARTS = DAYS.reduce((a, d) => (a.push(a[a.length - 1] + d), a), [0]);
   const simMonthly = new Chart($('simMonthly'), {
@@ -1300,9 +1320,6 @@
     simMonthly.data.datasets[1].data = r.months.map((M) => M.load / ed);
     simMonthly.options.scales.y.title.text = eU + ' per month';
     simMonthly.update();
-    simSoc.data.datasets[0].data = r.socMax.map((v, i) => ({ x: i, y: v * 100 }));
-    simSoc.data.datasets[1].data = r.socMin.map((v, i) => ({ x: i, y: v * 100 }));
-    simSoc.update();
     const outDays = r.months.reduce((a, M) => a + M.outageDays, 0), outHours = r.months.reduce((a, M) => a + M.outageHours, 0);
     const pvTot = r.months.reduce((a, M) => a + M.pv, 0), curt = r.months.reduce((a, M) => a + M.curtailed, 0);
     $('simDays').textContent = 365 - outDays;
@@ -1312,9 +1329,19 @@
     $('simAutonomy').textContent = r.avgLoad > 0 ? 'About ' + fmtNum(r.usable / r.avgLoad) + ' h at the average draw' : 'No draw set';
     $('simSurplus').textContent = pvTot > 0 ? Math.round(curt / pvTot * 100) : 0;
     let rows = '<tr><th>Month</th><th>Production (' + eU + ')</th><th>Consumption (' + eU + ')</th><th>Shortfall (' + eU + ')</th><th>Days with outage</th><th>Lowest charge</th></tr>';
-    r.months.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + fmtNum(M.pv / ed) + '</td><td>' + fmtNum(M.load / ed) + '</td><td>' + fmtNum(M.short / ed) + '</td><td>' + M.outageDays + '</td><td>' + Math.round(M.minSoc * 100) + ' %</td></tr>'; });
+    r.months.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + fmtNum(M.pv / ed) + '</td><td>' + fmtNum(M.load / ed) + '</td><td>' + fmtNum(M.short / ed) + '</td><td>' + M.outageDays + '</td><td class="soc"></td></tr>'; });
     $('simTable').innerHTML = rows;
-    runCost();   // the cost section depends on the same draw and battery
+    runCost();   // the cost section depends on the same draw and battery, and it draws the state of charge
+  }
+  // State of charge comes from the grid-connected model so that grid charging shows up; without it the battery
+  // follows exactly the same path as in the off-grid simulator, so nothing is lost.
+  function drawSoc(c) {
+    simSoc.data.datasets[0].data = c.socMax.map((v, i) => ({ x: i, y: v * 100 }));
+    simSoc.data.datasets[1].data = c.socMin.map((v, i) => ({ x: i, y: v * 100 }));
+    simSoc.update();
+    const grid = state.gridCharge && !state.noBatt && c.months.some((M) => M.gridKwh > 0);
+    $('socNote').textContent = grid ? '(including grid charging in the cheap hours)' : '';
+    document.querySelectorAll('#simTable td.soc').forEach((td, m) => { td.textContent = Math.round(c.months[m].minSoc * 100) + ' %'; });
   }
 
   // ---------- cost & return ----------
@@ -1423,7 +1450,7 @@
 
   // Costs: typical UK installed prices unless the user has typed a value.
   const capKwhTotal = () => battAhTotal() * state.battV / 1000;
-  const solarCostVal = () => state.solarCost != null ? state.solarCost : Math.round(state.kwp * 1100);
+  const solarCostVal = () => state.noSolar ? 0 : state.solarCost != null ? state.solarCost : Math.round(state.kwp * 1100);
   const battCostVal = () => state.noBatt ? 0 : state.battCost != null ? state.battCost : Math.round(capKwhTotal() * 450);
   function updateCostInputs() {
     const set = (id, v, typical, basis) => {
@@ -1432,6 +1459,9 @@
     };
     set('solarCost', solarCostVal(), gbp(Math.round(state.kwp * 1100)), 'about ' + gbp(1100) + ' per kWp installed (UK)');
     set('battCost', battCostVal(), gbp(Math.round(capKwhTotal() * 450)), 'about ' + gbp(450) + ' per kWh installed (UK)');
+    if (state.noSolar) $('solarCostNote').textContent = 'No panels in this scenario';
+    if (state.noBatt) $('battCostNote').textContent = 'No battery in this scenario';
+    $('solarCost').disabled = !!state.noSolar; $('battCost').disabled = !!state.noBatt;
     $('gridCharge').checked = !!state.gridCharge;
     for (const id of ['cheapBelow', 'standing', 'inflation', 'horizon']) if (document.activeElement !== $(id)) $(id).value = state[id];
   }
@@ -1444,33 +1474,39 @@
   $('horizon').addEventListener('input', () => { state.horizon = Math.max(1, Math.min(40, Math.round(parseFloat($('horizon').value) || 25))); save(); runCost(); });
 
   // Grid-connected money simulation, hour by hour over a year (second pass reported). Same battery model as the draw simulator.
-  function simulateCost(useBattery) {
+  function simulateCost() {
     const load = state.loadW.map((w) => w / 1000), pv = hourlyPv();
-    const usable = useBattery ? capKwhTotal() * state.dod : 0, eta = Math.sqrt(state.battEff), pc = useBattery ? chargeW() / 1000 : 0, pd = useBattery ? dischargeW() / 1000 : 0;
+    const usable = capKwhTotal() * state.dod, eta = Math.sqrt(state.battEff), pc = chargeW() / 1000, pd = dischargeW() / 1000;   // all zero when there is no battery
     const imp = state.priceImp.map((p) => p / 100), exp = state.priceExp.map((p) => p / 100);
-    const months = Array.from({ length: 12 }, () => ({ base: 0, imp: 0, exp: 0, impKwh: 0, expKwh: 0, load: 0, pv: 0, stand: 0 }));
-    let e = usable;
+    const months = Array.from({ length: 12 }, () => ({ base: 0, imp: 0, exp: 0, impKwh: 0, expKwh: 0, load: 0, pv: 0, stand: 0, dis: 0, gridKwh: 0, impLoad: 0, minSoc: 1 }));
+    const socMin = [], socMax = []; let e = usable;
     for (let year = 0; year < 2; year++) for (let n = 0; n < 365; n++) {
-      const M = months[new Date(2025, 0, n + 1).getMonth()];
+      const M = months[new Date(2025, 0, n + 1).getMonth()]; let dayMin = 1, dayMax = 0;
       if (year === 1) M.stand += state.standing / 100;   // standing charge, per day
       for (let h = 0; h < 24; h++) {
-        const p = pv[n][h], l = load[h], net = p - l; let importKwh = 0, exportKwh = 0, charged = 0;
+        const p = pv[n][h], l = load[h], net = p - l; let importKwh = 0, exportKwh = 0, charged = 0, served = 0;
+        const cheap = usable > 0 && state.gridCharge && state.priceImp[h] <= state.cheapBelow;   // a grid-charging hour
         if (net >= 0) { const stored = Math.min(net, (usable - e) / eta, pc); e += stored * eta; charged = stored; exportKwh = net - stored; }
-        else { const need = -net, take = Math.min(need / eta, e, pd); e -= take; importKwh = need - take * eta; }
-        if (usable > 0 && state.gridCharge && state.priceImp[h] <= state.cheapBelow && e < usable) {
-          const add = Math.min((usable - e) / eta, Math.max(0, pc - charged)); e += add * eta; importKwh += add;
+        else if (cheap) importKwh = -net;   // cheap power: buy it for the load and keep the battery for the dear hours
+        else { const need = -net, take = Math.min(need / eta, e, pd); e -= take; served = take * eta; importKwh = need - served; }
+        let fromGrid = 0;
+        if (cheap && e < usable) {
+          fromGrid = Math.min((usable - e) / eta, Math.max(0, pc - charged)); e += fromGrid * eta; importKwh += fromGrid;
         }
-        if (year === 1) { M.base += l * imp[h]; M.imp += importKwh * imp[h]; M.exp += exportKwh * exp[h]; M.impKwh += importKwh; M.expKwh += exportKwh; M.load += l; M.pv += p; }
+        if (year === 1) {
+          M.base += l * imp[h]; M.imp += importKwh * imp[h]; M.exp += exportKwh * exp[h]; M.impKwh += importKwh; M.expKwh += exportKwh; M.load += l; M.pv += p; M.dis += served; M.gridKwh += fromGrid; M.impLoad += importKwh - fromGrid;   // imported at the moment of use
+          const frac = usable > 0 ? e / usable : 0; if (frac < dayMin) dayMin = frac; if (frac > dayMax) dayMax = frac;
+        }
       }
+      if (year === 1) { if (dayMin < M.minSoc) M.minSoc = dayMin; socMin.push(dayMin); socMax.push(dayMax); }
     }
-    return months;
+    return { months, socMin, socMax };
   }
   const costMonthly = new Chart($('costMonthly'), {
     type: 'line',
     data: { labels: MONTHS, datasets: [
       { label: 'Without system', data: [], borderColor: css('--text'), backgroundColor: css('--text'), borderWidth: 3 },
-      { label: 'Solar only', data: [], borderColor: css('--s1'), backgroundColor: css('--s1'), borderDash: [6, 4] },
-      { label: 'Solar + battery', data: [], borderColor: '#008300', backgroundColor: '#008300' },
+      { label: 'Upgraded system', data: [], borderColor: '#008300', backgroundColor: '#008300' },
     ] },
     options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
       elements: { line: { borderWidth: 2, tension: 0.3, borderJoinStyle: 'round' }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card'), hoverBorderWidth: 1, hoverBorderColor: css('--card') } },
@@ -1481,8 +1517,7 @@
   const costFlow = new Chart($('costFlow'), {
     type: 'line',
     data: { datasets: [
-      { label: 'Solar only', data: [], borderColor: css('--s1'), backgroundColor: css('--s1'), borderDash: [6, 4] },
-      { label: 'Solar + battery', data: [], borderColor: '#008300', backgroundColor: '#008300' },
+      { label: 'Upgraded system', data: [], borderColor: '#008300', backgroundColor: '#008300' },
     ] },
     options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, parsing: false,
       elements: { line: { borderWidth: 2, tension: 0 }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card') } },
@@ -1494,23 +1529,29 @@
   function runCost() {
     updateCostInputs();
     const cheap = state.priceImp.map((p, h) => p <= state.cheapBelow ? h : -1).filter((h) => h >= 0), minP = Math.min(...state.priceImp);
-    $('gridNote').textContent = !state.gridCharge ? '' : cheap.length ? cheap.length + ' hour' + (cheap.length > 1 ? 's' : '') + ' a day qualify (' + cheap.map((h) => String(h).padStart(2, '0')).join(', ') + ')'
+    $('gridNote').textContent = !state.gridCharge ? (state.noSolar && !state.noBatt ? 'With no solar the battery can only save money by charging from the grid, so turn this on.' : '') : cheap.length ? cheap.length + ' hour' + (cheap.length > 1 ? 's' : '') + ' a day qualify (' + cheap.map((h) => String(h).padStart(2, '0')).join(', ') + ')'
       : 'No hour is that cheap on the current import prices, so this has no effect. Cheapest hour: ' + fmtNum(minP) + ' ' + cur().sub + '/kWh.';
-    const B = simulateCost(true), S = simulateCost(false), sum = (arr, k) => arr.reduce((a, M) => a + M[k], 0);
-    const stand = sum(B, 'stand'), base = sum(B, 'base') + stand, billB = sum(B, 'imp') - sum(B, 'exp') + stand, billS = sum(S, 'imp') - sum(S, 'exp') + stand;
-    const savB = base - billB, savS = base - billS, costS = solarCostVal(), costB = costS + battCostVal();
+    const C = simulateCost(), B = C.months, sum = (arr, k) => arr.reduce((a, M) => a + M[k], 0);
+    drawSoc(C);
+    const stand = sum(B, 'stand'), base = sum(B, 'base') + stand, billB = sum(B, 'imp') - sum(B, 'exp') + stand;
+    const savB = base - billB, costB = solarCostVal() + battCostVal();
     const N = state.horizon, inf = state.inflation / 100;
     const flow = (cost, sav) => { const out = [{ x: 0, y: -cost }]; let c = -cost; for (let y = 1; y <= N; y++) { c += sav * Math.pow(1 + inf, y - 1); out.push({ x: y, y: c }); } return out; };
-    const fS = flow(costS, savS), fB = flow(costB, savB);
+    const fB = flow(costB, savB);
     const payback = (f) => { for (let i = 1; i < f.length; i++) if (f[i].y >= 0) { const a = f[i - 1].y, b = f[i].y; return f[i - 1].x + (b > a ? -a / (b - a) : 0); } return null; };
-    const pbS = payback(fS), pbB = payback(fB), yrs = (p) => p == null ? 'not within ' + N + ' years' : fmtNum(p) + ' years';
-    const loadK = sum(B, 'load'), pvK = sum(B, 'pv'), impK = sum(B, 'impKwh'), expK = sum(B, 'expKwh');
-    $('cSaving').innerHTML = gbpHtml(savB); $('cSavingNote').textContent = 'Solar only: ' + gbp(savS) + ' per year';
-    $('cPayback').textContent = pbB == null ? '–' : fmtNum(pbB); $('cPaybackNote').textContent = (pbB == null ? 'Not within ' + N + ' years. ' : '') + 'Solar only: ' + yrs(pbS);
+    const pbB = payback(fB);
+    const loadK = sum(B, 'load'), pvK = sum(B, 'pv'), impK = sum(B, 'impKwh'), expK = sum(B, 'expKwh'), impLoadK = sum(B, 'impLoad');
+    // the upgraded system is whatever is currently selected: panels, battery or both
+    const hasS = !state.noSolar, hasB = !state.noBatt;
+    const cfg = hasS && hasB ? 'solar + battery' : hasS ? 'solar only' : hasB ? 'battery only' : 'nothing', sysName = 'Upgraded system (' + cfg + ')';
+    $('cSaving').innerHTML = gbpHtml(savB); $('cSavingNote').textContent = 'With ' + cfg + ', against no system';
+    $('cPaybackLabel').textContent = 'Payback, ' + cfg;
+    $('cPayback').textContent = pbB == null ? '–' : fmtNum(pbB); $('cPaybackNote').textContent = pbB == null ? 'Not within ' + N + ' years' : '';
     $('cBill').innerHTML = gbpHtml(billB); $('cBillNote').textContent = 'Without a system: ' + gbp(base) + ' per year';
     $('cExport').innerHTML = gbpHtml(sum(B, 'exp')); $('cExportNote').textContent = fmtNum(expK) + ' kWh exported per year';
-    $('cSelf').textContent = loadK > 0 ? Math.round((1 - impK / loadK) * 100) : 0;
-    $('cSelfNote').textContent = 'Self-consumption ' + (pvK > 0 ? Math.round((1 - expK / pvK) * 100) : 0) + ' % of production';
+    $('cSelf').textContent = loadK > 0 ? Math.round((1 - impLoadK / loadK) * 100) : 0;   // share of the draw met by solar or the battery at the time of use
+    $('cSelfNote').textContent = hasS ? 'Self-consumption ' + (pvK > 0 ? Math.round((1 - expK / pvK) * 100) : 0) + ' % of production' : 'Share of the draw served from the battery';
+    if (hasS && state.gridCharge && sum(B, 'gridKwh') > 0) $('cSelfNote').textContent += '; grid-charged energy counts as self-supplied';
     // internal rate of return of the cash flow over the horizon: outlay at year 0, inflating savings for N years
     const irr = (f) => {
       const npv = (r) => f.reduce((a, p) => a + p.y0 / Math.pow(1 + r, p.x), 0);
@@ -1519,17 +1560,16 @@
       return (lo + hi) / 2;
     };
     const yearly = (cost, sav) => [{ x: 0, y0: -cost }].concat(Array.from({ length: N }, (_, i) => ({ x: i + 1, y0: sav * Math.pow(1 + inf, i) })));
-    const rB = costB > 0 ? irr(yearly(costB, savB)) : null, rS = costS > 0 ? irr(yearly(costS, savS)) : null, pct = (r) => r == null ? '–' : (r < 0 ? '−' : '') + fmtNum(Math.abs(r) * 100);
-    $('cRoi').textContent = pct(rB); $('cRoiNote').textContent = 'Internal rate of return over ' + N + ' years. Solar only: ' + pct(rS) + ' %';
-    $('cNet').innerHTML = gbpHtml(fB[N].y); $('cNetNote').textContent = 'Solar + battery over ' + N + ' years; solar only ' + gbp(fS[N].y);
+    const rB = costB > 0 ? irr(yearly(costB, savB)) : null, pct = (r) => r == null ? '–' : (r < 0 ? '−' : '') + fmtNum(Math.abs(r) * 100);
+    $('cRoi').textContent = pct(rB); $('cRoiNote').textContent = 'Internal rate of return over ' + N + ' years';
+    $('cNet').innerHTML = gbpHtml(fB[N].y); $('cNetNote').textContent = sysName + ' over ' + N + ' years';
     costMonthly.data.datasets[0].data = B.map((M) => M.base + M.stand);
-    costMonthly.data.datasets[1].data = S.map((M) => M.imp - M.exp + M.stand);
-    costMonthly.data.datasets[2].data = B.map((M) => M.imp - M.exp + M.stand);
+    costMonthly.data.datasets[1].data = B.map((M) => M.imp - M.exp + M.stand); costMonthly.data.datasets[1].label = sysName;
     costMonthly.update();
-    costFlow.data.datasets[0].data = fS; costFlow.data.datasets[1].data = fB; costFlow.options.scales.x.max = N; costFlow.update();
-    let rows = '<tr><th>Month</th><th>Without system</th><th>Solar only</th><th>Solar + battery</th><th>Imported (kWh)</th><th>Exported (kWh)</th></tr>';
-    B.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + gbp(M.base + M.stand) + '</td><td>' + gbp(S[m].imp - S[m].exp + M.stand) + '</td><td>' + gbp(M.imp - M.exp + M.stand) + '</td><td>' + fmtNum(M.impKwh) + '</td><td>' + fmtNum(M.expKwh) + '</td></tr>'; });
-    rows += '<tr><th>Year</th><th>' + gbp(base) + '</th><th>' + gbp(billS) + '</th><th>' + gbp(billB) + '</th><th>' + fmtNum(impK) + '</th><th>' + fmtNum(expK) + '</th></tr>';
+    costFlow.data.datasets[0].data = fB; costFlow.data.datasets[0].label = sysName; costFlow.options.scales.x.max = N; costFlow.update();
+    let rows = '<tr><th>Month</th><th>Without system</th><th>' + sysName + '</th><th>Imported (kWh)</th><th>Exported (kWh)</th></tr>';
+    B.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + gbp(M.base + M.stand) + '</td><td>' + gbp(M.imp - M.exp + M.stand) + '</td><td>' + fmtNum(M.impKwh) + '</td><td>' + fmtNum(M.expKwh) + '</td></tr>'; });
+    rows += '<tr><th>Year</th><th>' + gbp(base) + '</th><th>' + gbp(billB) + '</th><th>' + fmtNum(impK) + '</th><th>' + fmtNum(expK) + '</th></tr>';
     $('costTable').innerHTML = rows;
   }
   applyCurrency(); impEd.draw(); expEd.draw(); impCtl.refresh(); expCtl.refresh();
