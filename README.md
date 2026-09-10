@@ -1,23 +1,58 @@
-# Solar Panel Calculator
+# Solar Panel and Battery Calculator
 
-[Solar Panel Calculator - run it here](https://sunbeam60.github.io/solar-panel-calculator/)
+[Start the Calculator](https://sunbeam60.github.io/Solar-Panel-and-Battery-Calculator/)
 
-<img width="1069" height="822" alt="image" src="https://github.com/user-attachments/assets/1fb64fca-5560-4ea8-9265-b6bba347d477" />
+<img width="539" height="627" alt="image" src="https://github.com/user-attachments/assets/c608782e-10ab-4529-bea2-20227f5a86cf" />
 
-A single-file web app for sizing a solar panel system. Pick a location on the map, set the panel tilt and direction, and see the estimated output, then test whether a battery keeps a load powered through the year and what the system saves against your tariff.
+- Wondering how much energy your new solar panels will generate?
+- Trying to figure out how big a battery you need?
+- How will that all fit in with your home energy use?
+- And what about if you changed to a different energy tariff that paid differently?
+- Deploying a solar powered device in a remote location and wondering if it's strong enough to last through the winter?
+- Thinking about adding a bit of balcony solar and plug-in battery?
+- Wondering how you will convince your partner that this is a good thing to spend your money on (the origin of this vibe-coded project)?
 
-Open `index.html` in a browser. Everything runs client side; the page needs internet access for the map tiles, place search, the NASA POWER climate data and the two chart and map libraries loaded from CDNs.
+The answers to all those questions are (probably) in this calculator.
 
-## What it does
+## How to use the calculator
+[Start the Calculator](https://sunbeam60.github.io/Solar-Panel-and-Battery-Calculator/)
 
-- **Location and orientation.** Leaflet map with street and satellite layers, a draggable pin, and an azimuth arrow you can line up with a roof. Tilt and direction can be set by sliders, by the compass and side-view graphics, or by clicking the tilt-by-direction heatmap.
-- **Output model.** A clear-sky irradiance model (Meinel beam, Haurwitz global, isotropic diffuse and ground reflection) scaled month by month to NASA POWER's measured irradiance for the site. Shows annual and monthly output, a daily power profile for the best, average and worst day, and the optimal orientation.
-- **System draw simulator.** Paint an hour-by-hour load in µW to GW, choose a battery from cell, portable, home and vehicle presets, and run an hourly year-long simulation of state of charge, outages and unused production.
-- **Cost and return.** Hourly import and export price editors with UK tariff presets, standing charge, installed-cost defaults, optional cheap-hour grid charging, and monthly bill, payback, annualised return and cumulative cash-flow charts for solar only versus solar plus battery.
-- **Share links.** The whole configuration is encoded in the URL, and a share button copies it.
+### Solar panels
+<img width="200" alt="image" src="https://github.com/user-attachments/assets/f9d6e434-2036-4cc2-8e35-02d1b6f30955" align="left"/>
+
+Pick the location, the angle and orientation of the solar panel.
+
+Using NASA sky clarity data and simulated sun position, the expected, unshaded output of the panels are shown. You can play with different orientations and angles to see the effect on the output.
+
+If you're only considering adding a battery to take advantage of cheap overnight or midday energy, click "No solar"
+
+### Battery
+<img width="200" alt="image" src="https://github.com/user-attachments/assets/7ed2f369-11e7-4333-9685-d53a13a3f496" align="left" />
+
+Add some battery storage; there are a few presets for commonplace battery models, but if you can't find the one you're looking for, you can manually set battery size, limits, depth, efficiency in the "Advanced" section.
+
+### Usage
+<img width="200" alt="image" src="https://github.com/user-attachments/assets/dbef74c7-ae7c-4e96-8856-986d64c3f687" align="left" />
+Add your energy usage. For homes, it's easiest to pick the "Household" preset and the scale the usage to your annual usage by manually set the "Annual use" value; the hourly use settings are scaled combined.
+
+If your usage is atypical, you you manually click and drag to set hour by hour figures. It's far easier to draw the general usage shape and then scale that shape by use the "Annual use" field.
+
+### Cost & Return
+<img width="200" alt="image" src="https://github.com/user-attachments/assets/f2161f25-570b-4298-aa98-c824876c4eec" align="left" />
+Set your electricity rate; in many situations, once you add solar to your building, you'll start moving towards a flexible rate that allows you to sell solar energy back to the grid. 
+
+The presets hold common (UK) flexible tariffs, but you can click and drag to set your own or simply clock "Flatten" for static pricing (scale by using the Average field).
+
+Many flexible tariffs pay you for exporting energy back to the grid. In some cases, this is a flat rate, in others a flexible rate. Like the cost, export pricing can be drawn manually if one of the supplied presets don't suit you.
+
+For deployable solar nodes, where you are simply modelling how the solar node will operate during the dark winter months) the Cost & Return section can simply be ignored.
+
+## Need to share your calculation with someone else?
+<img width="45" height="44" alt="image" src="https://github.com/user-attachments/assets/10dc5f93-d7b4-40be-b953-82f4d386996b" align="left" />
+Click the share link in the top right of the page.
 
 ## Notes
-
-- Hours in the simulators are solar time.
-- Prices and costs are whatever currency you choose; the tariff and installed-cost presets are UK figures, approximate for 2025.
-- No battery degradation, replacement or export limit is modelled.
+- Started as a vibe coded project to model behaviour of some MeshCore nodes over winter.
+- Evolved into a home calculator on request.
+- Evolved further based on user requests.
+- Might not be useful to you.
