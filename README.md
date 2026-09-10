@@ -40,6 +40,7 @@ If your usage is atypical, you you manually click and drag to set hour by hour f
 
 ### Cost & Return
 <img width="200" alt="image" src="https://github.com/user-attachments/assets/f2161f25-570b-4298-aa98-c824876c4eec" />
+
 Set your electricity rate; in many situations, once you add solar to your building, you'll start moving towards a flexible rate that allows you to sell solar energy back to the grid. 
 
 The presets hold common (UK) flexible tariffs, but you can click and drag to set your own or simply clock "Flatten" for static pricing (scale by using the Average field).
@@ -50,6 +51,7 @@ For deployable solar nodes, where you are simply modelling how the solar node wi
 
 ## Need to share your calculation with someone else?
 <img width="45" height="44" alt="image" src="https://github.com/user-attachments/assets/10dc5f93-d7b4-40be-b953-82f4d386996b" />
+
 Click the share link in the top right of the page.
 
 ## Notes
