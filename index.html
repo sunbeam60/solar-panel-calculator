@@ -102,6 +102,7 @@
   /* a card whose part is switched off: dimmed but still editable, the heading says why */
   .card.off { background: #f6f6f4; border-style: dashed; }
   .card.off > :not(.cardhead) { opacity: .45; filter: grayscale(.5); }
+  #expBlock.off { opacity: .45; filter: grayscale(.5); }
   .card.off > .cardhead h2::after { content: attr(data-off); color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 8px; }
   .pills { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 8px 150px; }
   .pills .chip { margin-left: 0; }
@@ -348,9 +349,12 @@
         <div class="loadwrap"><canvas id="impEd" class="priceEd"></canvas><div id="imptip"></div></div>
         <div class="row"><label>Average <input type="text" id="impAvg" style="width:80px"> <span class="sub">p</span>/kWh</label><button id="impFlat" title="Set every hour to this value">Flatten</button><span class="hint" id="impNote">Editing the average scales the whole day.</span></div>
         <div class="row" style="margin-top:14px"><strong>Export price (SEG)</strong><span class="hint">What you are paid, <span class="sub">p</span>/kWh.</span>
-          <select id="expPreset" class="pricePreset" style="margin-left:auto" title="Typical UK export tariffs"><option value="">Preset…</option></select></div>
-        <div class="loadwrap"><canvas id="expEd" class="priceEd"></canvas><div id="exptip"></div></div>
-        <div class="row"><label>Average <input type="text" id="expAvg" style="width:80px"> <span class="sub">p</span>/kWh</label><button id="expFlat" title="Set every hour to this value">Flatten</button><span class="hint" id="expNote"></span></div>
+          <label style="margin-left:auto" title="No export tariff or no permission to export: surplus is wasted and earns nothing"><input type="checkbox" id="noExport"> No export</label>
+          <select id="expPreset" class="pricePreset" title="Typical UK export tariffs"><option value="">Preset…</option></select></div>
+        <div id="expBlock">
+          <div class="loadwrap"><canvas id="expEd" class="priceEd"></canvas><div id="exptip"></div></div>
+          <div class="row"><label>Average <input type="text" id="expAvg" style="width:80px"> <span class="sub">p</span>/kWh</label><button id="expFlat" title="Set every hour to this value">Flatten</button><span class="hint" id="expNote"></span></div>
+        </div>
       </div>
       <div class="tiles">
         <div class="tile hero"><div class="label">Annual saving</div><div class="value"><span id="cSaving">–</span><small>/yr</small></div><div class="hint" id="cSavingNote"></div></div>
@@ -400,7 +404,7 @@
     loadW: [300, 250, 250, 250, 250, 300, 600, 800, 500, 400, 400, 450, 500, 400, 400, 450, 600, 1000, 1400, 1300, 1000, 700, 500, 350], loadUnit: 3,
     noBatt: false, noSolar: false, battN: 1, battCap: 200, battCapUnit: 'Ah', battV: 48, dod: 0.8, battEff: 0.9,
     priceImp: new Array(24).fill(25), priceExp: new Array(24).fill(15), solarCost: null, battCost: null, battChargeW: null, battDischargeW: null,
-    gridCharge: false, cheapBelow: 10, standing: 54, inflation: 3, horizon: 25, currency: 0 };
+    gridCharge: false, noExport: false, cheapBelow: 10, standing: 54, inflation: 3, horizon: 25, currency: 0 };
   let state = Object.assign({}, defaults);
   const sizeUnit = () => SIZE_UNITS[state.sizeUnit] || SIZE_UNITS[1];
   const loadUnit = () => LOAD_UNITS[state.loadUnit] || LOAD_UNITS[2];
@@ -429,7 +433,7 @@
     p.set('dod', state.dod); p.set('beff', state.battEff);
     p.set('pi', state.priceImp.map((v) => +v.toFixed(2)).join(',')); p.set('pe', state.priceExp.map((v) => +v.toFixed(2)).join(','));
     if (state.solarCost != null) p.set('sc', state.solarCost); if (state.battCost != null) p.set('bc', state.battCost); if (state.battChargeW != null) p.set('bcw', +state.battChargeW.toPrecision(5)); if (state.battDischargeW != null) p.set('bdw', +state.battDischargeW.toPrecision(5));
-    if (state.gridCharge) p.set('gc', '1'); p.set('cb', state.cheapBelow); p.set('st', state.standing); p.set('inf', state.inflation); p.set('yrs', state.horizon); if (state.currency) p.set('cur', state.currency);
+    if (state.gridCharge) p.set('gc', '1'); if (state.noExport) p.set('nx', '1'); p.set('cb', state.cheapBelow); p.set('st', state.standing); p.set('inf', state.inflation); p.set('yrs', state.horizon); if (state.currency) p.set('cur', state.currency);
     return p.toString();
   }
   function fromQuery(qs) {
@@ -455,7 +459,7 @@
     }
     if (p.has('sc')) set('solarCost', num('sc', 0, 1e12)); if (p.has('bc')) set('battCost', num('bc', 0, 1e12)); if (p.has('bp')) { const w = num('bp', 0, 1e9) * 1000; state.battChargeW = w; state.battDischargeW = w; }
     if (p.has('bcw')) set('battChargeW', num('bcw', 0, 1e12)); if (p.has('bdw')) set('battDischargeW', num('bdw', 0, 1e12));
-    state.gridCharge = p.has('gc'); set('cheapBelow', num('cb', 0, 1e4)); set('standing', num('st', 0, 1e5)); set('inflation', num('inf', -10, 30)); set('horizon', num('yrs', 1, 40)); set('currency', num('cur', 0, 3));
+    state.gridCharge = p.has('gc'); state.noExport = p.has('nx'); set('cheapBelow', num('cb', 0, 1e4)); set('standing', num('st', 0, 1e5)); set('inflation', num('inf', -10, 30)); set('horizon', num('yrs', 1, 40)); set('currency', num('cur', 0, 3));
     return true;
   }
   const fromUrl = fromQuery(location.search);   // true when the page was opened from a link carrying a location
@@ -1476,11 +1480,13 @@
     if (state.noBatt) $('battCostNote').textContent = 'No battery in this scenario';
     $('solarCost').disabled = !!state.noSolar; $('battCost').disabled = !!state.noBatt;
     $('gridCharge').checked = !!state.gridCharge;
+    $('noExport').checked = !!state.noExport; $('expBlock').classList.toggle('off', !!state.noExport);
     for (const id of ['cheapBelow', 'standing', 'inflation', 'horizon']) if (document.activeElement !== $(id)) $(id).value = state[id];
   }
   document.addEventListener('click', (e) => { const a = e.target.closest('.costReset'); if (!a) return; state[a.dataset.key] = null; save(); runCost(); });
   for (const id of ['solarCost', 'battCost']) $(id).addEventListener('input', () => { const v = parseFloat($(id).value); state[id] = isFinite(v) && v >= 0 ? v : null; save(); runCost(); });
   $('gridCharge').addEventListener('change', () => { state.gridCharge = $('gridCharge').checked; save(); runCost(); });
+  $('noExport').addEventListener('change', () => { state.noExport = $('noExport').checked; save(); runCost(); });
   $('cheapBelow').addEventListener('input', () => { state.cheapBelow = Math.max(0, parseFloat($('cheapBelow').value) || 0); save(); runCost(); });
   $('standing').addEventListener('input', () => { state.standing = Math.max(0, parseFloat($('standing').value) || 0); save(); runCost(); });
   $('inflation').addEventListener('input', () => { state.inflation = Math.max(-10, Math.min(30, parseFloat($('inflation').value) || 0)); save(); runCost(); });
@@ -1490,7 +1496,7 @@
   function simulateCost() {
     const load = state.loadW.map((w) => w / 1000), pv = hourlyPv();
     const usable = capKwhTotal() * state.dod, eta = Math.sqrt(state.battEff), pc = chargeW() / 1000, pd = dischargeW() / 1000;   // all zero when there is no battery
-    const imp = state.priceImp.map((p) => p / 100), exp = state.priceExp.map((p) => p / 100);
+    const imp = state.priceImp.map((p) => p / 100), exp = state.priceExp.map((p) => state.noExport ? 0 : p / 100);   // no export: surplus earns nothing
     const months = Array.from({ length: 12 }, () => ({ base: 0, imp: 0, exp: 0, impKwh: 0, expKwh: 0, load: 0, pv: 0, stand: 0, dis: 0, gridKwh: 0, impLoad: 0, minSoc: 1 }));
     const socMin = [], socMax = []; let e = usable;
     for (let year = 0; year < 2; year++) for (let n = 0; n < 365; n++) {
@@ -1564,7 +1570,7 @@
     $('cPaybackLabel').textContent = 'Payback, ' + cfg;
     $('cPayback').textContent = pbB == null ? '–' : fmtNum(pbB); $('cPaybackNote').textContent = pbB == null ? 'Not within ' + N + ' years' : '';
     $('cBill').innerHTML = gbpHtml(billB); $('cBillNote').textContent = 'Without a system: ' + gbp(base) + ' per year';
-    $('cExport').innerHTML = gbpHtml(sum(B, 'exp')); $('cExportNote').textContent = fmtNum(expK) + ' kWh exported per year';
+    $('cExport').innerHTML = gbpHtml(sum(B, 'exp')); $('cExportNote').textContent = state.noExport ? 'No export: ' + fmtNum(expK) + ' kWh of surplus per year goes unused' : fmtNum(expK) + ' kWh exported per year';
     $('cSelf').textContent = loadK > 0 ? Math.round((1 - impLoadK / loadK) * 100) : 0;   // share of the draw met by solar or the battery at the time of use
     $('cSelfNote').textContent = hasS ? 'Self-consumption ' + (pvK > 0 ? Math.round((1 - expK / pvK) * 100) : 0) + ' % of production' : 'Share of the draw served from the battery';
     if (hasS && state.gridCharge && sum(B, 'gridKwh') > 0) $('cSelfNote').textContent += '; grid-charged energy counts as self-supplied';
@@ -1583,7 +1589,7 @@
     costMonthly.data.datasets[1].data = B.map((M) => M.imp - M.exp + M.stand); costMonthly.data.datasets[1].label = sysName;
     costMonthly.update();
     costFlow.data.datasets[0].data = fB; costFlow.data.datasets[0].label = sysName; costFlow.options.scales.x.max = N; costFlow.update();
-    let rows = '<tr><th>Month</th><th>Without system</th><th>' + sysName + '</th><th>Imported (kWh)</th><th>Exported (kWh)</th></tr>';
+    let rows = '<tr><th>Month</th><th>Without system</th><th>' + sysName + '</th><th>Imported (kWh)</th><th>' + (state.noExport ? 'Unused surplus (kWh)' : 'Exported (kWh)') + '</th></tr>';
     B.forEach((M, m) => { rows += '<tr><td>' + MONTHS[m] + '</td><td>' + gbp(M.base + M.stand) + '</td><td>' + gbp(M.imp - M.exp + M.stand) + '</td><td>' + fmtNum(M.impKwh) + '</td><td>' + fmtNum(M.expKwh) + '</td></tr>'; });
     rows += '<tr><th>Year</th><th>' + gbp(base) + '</th><th>' + gbp(billB) + '</th><th>' + fmtNum(impK) + '</th><th>' + fmtNum(expK) + '</th></tr>';
     $('costTable').innerHTML = rows;
