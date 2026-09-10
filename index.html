@@ -33,13 +33,15 @@
   .iconbtn:hover { color: var(--accent); }
   header h1 { margin: 0; font-size: 20px; font-weight: 650; }
   header p { margin: 4px 0 0; color: var(--text-2); }
-  main { padding: 12px 24px 40px; display: grid; gap: 16px; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); }
-  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  main { padding: 12px 24px 40px; display: grid; gap: 16px; grid-template-columns: 1fr; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-width: 0; }
   .card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 650; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; color: var(--text-2); }
+  .solar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr); gap: 24px; align-items: start; }
+  .solar > div { min-width: 0; }
+  @media (max-width: 960px) { .solar { grid-template-columns: 1fr; } }
   .full { grid-column: 1 / -1; }
   #map { flex: 1; min-height: 380px; border-radius: 8px; border: 1px solid var(--border); }
-  #locCard { display: flex; flex-direction: column; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .row + .row { margin-top: 8px; }
   input[type=text], input[type=number] { font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); }
@@ -70,7 +72,7 @@
   .pop .months { display: flex; justify-content: space-between; color: #c3c2b7; font-size: 10px; }
   .pop button { margin-top: 8px; padding: 4px 10px; font-size: 12px; background: #fff; color: var(--text); border: 0; }
   .climate { margin: -2px 0 6px 130px; }
-  .climate a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .climate a, .hint a { color: var(--accent); cursor: pointer; text-decoration: underline; }   /* reset and 'use typical' links */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
   .tile { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fff; }
   .tile .label { color: var(--text-2); font-size: 12px; }
@@ -85,9 +87,8 @@
   #heat { width: 100%; display: block; cursor: crosshair; border-radius: 6px; }
   .sim { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 16px; align-items: start; }
   .sim > .tiles { grid-column: 2; grid-row: 1; }
-  .sim > .battery { grid-column: 1 / -1; grid-row: 2; border-top: 1px solid var(--grid); padding-top: 12px; }
   #loadPreset { width: 200px; max-width: 100%; }
-  @media (max-width: 960px) { .sim { grid-template-columns: 1fr; } .sim > .tiles, .sim > .battery { grid-column: auto; grid-row: auto; } }
+  @media (max-width: 960px) { .sim { grid-template-columns: 1fr; } .sim > .tiles { grid-column: auto; grid-row: auto; } }
   .loadwrap { position: relative; margin: 6px 0 8px; }
   #loadEd, .priceEd { width: 100%; display: block; cursor: crosshair; touch-action: none; }
   .pricePreset { width: 240px; max-width: 100%; }
@@ -98,7 +99,10 @@
   .sim .ctl.wide { grid-template-columns: 150px 1fr; }
   .chip { padding: 2px 9px; font-size: 12px; border-radius: 999px; margin-left: 4px; }
   .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .battery.off .ctl:not(.keep), .battery.off .pills { opacity: .4; pointer-events: none; }
+  /* a card whose part is switched off: dimmed but still editable, the heading says why */
+  .card.off { background: #f6f6f4; border-style: dashed; }
+  .card.off > :not(.cardhead) { opacity: .45; filter: grayscale(.5); }
+  .card.off > .cardhead h2::after { content: attr(data-off); color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 8px; }
   .pills { display: flex; flex-wrap: wrap; gap: 4px; margin: -4px 0 8px 150px; }
   .pills .chip { margin-left: 0; }
   .pills > .hint { width: 52px; font-size: 11px; line-height: 22px; }
@@ -149,113 +153,86 @@
 </header>
 
 <main>
-  <section class="card" id="locCard">
-    <h2>Location</h2>
-    <div class="row">
-      <input type="text" id="search" placeholder="Search a place (e.g. Copenhagen)" style="flex:1; min-width:180px">
-      <button id="searchBtn">Search</button>
-      <button id="geoBtn" title="Use browser geolocation">Use my location</button>
-      <button id="roofBtn" title="Zoom the satellite view in on the pin">Zoom to pin</button>
+  <section class="card full collapsible" id="solarCard">
+    <div class="row cardhead" style="align-items:baseline"><h2 title="Click to collapse or expand" data-off="· excluded, no solar">Solar panel</h2>
+      <label style="margin-left:auto" title="Run the usage and cost sections without any panels, so a battery can only charge from the grid. The orientation study here is unaffected."><input type="checkbox" id="noSolar"> No solar</label></div>
+    <div class="loc" style="margin-bottom:14px">
+      <h3>Location</h3>
+      <div class="row">
+        <input type="text" id="search" placeholder="Search a place (e.g. Copenhagen)" style="flex:1; min-width:180px">
+        <button id="searchBtn">Search</button>
+        <button id="geoBtn" title="Use browser geolocation">Use my location</button>
+        <button id="roofBtn" title="Zoom the satellite view in on the pin">Zoom to pin</button>
+      </div>
+      <div class="row"><span class="hint">Click the map or drag the marker. Drag the arrow tip to line the panel direction up with your roof.</span></div>
+      <div class="status" id="status"></div>
+      <div id="map" style="margin-top:8px"></div>
     </div>
-    <div class="row"><span class="hint">Click the map or drag the marker. Drag the arrow tip to line the panel direction up with your roof.</span></div>
-    <div class="status" id="status"></div>
-    <div id="map" style="margin-top:8px"></div>
-  </section>
-
-  <section class="card">
-    <div class="row" style="align-items:baseline"><h2>Panel &amp; system</h2>
-      <label style="margin-left:auto" title="Run the draw simulator and the cost section without any panels, so a battery can only charge from the grid. The orientation study below is unaffected."><input type="checkbox" id="noSolar"> No solar</label></div>
-    <div class="ctl"><label for="tilt">Tilt</label><input type="range" id="tilt" min="0" max="90" step="1"><output id="tiltOut"></output></div>
-    <div class="ctl"><label for="az">Direction (azimuth)</label><input type="range" id="az" min="0" max="359" step="1"><output id="azOut"></output></div>
-    <div class="ctl size"><label for="kwp">System size</label><input type="range" id="kwp" min="1" max="20" step="0.5">
+    <div class="solar">
+      <div>
+        <div class="ctl"><label for="tilt">Tilt</label><input type="range" id="tilt" min="0" max="90" step="1"><output id="tiltOut"></output></div>
+        <div class="ctl"><label for="az">Direction (azimuth)</label><input type="range" id="az" min="0" max="359" step="1"><output id="azOut"></output></div>
+        <div class="ctl size"><label for="kwp">System size</label><input type="range" id="kwp" min="1" max="20" step="0.5">
       <span class="sizeVal"><input type="number" id="kwpIn" min="0" step="any" title="Type an exact system size; the slider moves in coarser steps"><span id="kwpUnit" class="unit-cycle" title="Click to change unit (Wp, kWp, MWp, GWp)"></span></span></div>
-    <details class="adv" id="advPanel"><summary>Advanced</summary>
-    <div class="ctl"><label for="pr">Performance ratio</label>
+        <details class="adv" id="advPanel"><summary>Advanced</summary>
+        <div class="ctl"><label for="pr">Performance ratio</label>
       <div class="slwrap"><input type="range" id="pr" min="0.5" max="1" step="0.01" aria-describedby="prPop">
         <div class="pop" id="prPop" role="tooltip"><b>Performance ratio</b><br>Share of the panels' rated output that reaches the load on the direct path. Covers inverter or charge-controller conversion, cells running hotter than 25 °C, wiring and mismatch, dirt and shading.
           <span class="dim">Not cell efficiency: that is already inside the kWp rating. Real systems land at 75–85 %; PVGIS assumes 86 %.</span></div></div>
       <output id="prOut"></output></div>
-    <div class="hint climate" id="prNote"></div>
-    <div class="ctl"><label for="clear">Sky clearness</label>
+        <div class="hint climate" id="prNote"></div>
+        <div class="ctl"><label for="clear">Sky clearness</label>
       <div class="slwrap">
         <input type="range" id="clear" min="0.3" max="1" step="0.01" aria-describedby="clearPop">
         <div class="pop" id="clearPop" role="tooltip"></div>
       </div>
       <output id="clearOut"></output></div>
-    <div class="hint climate" id="climateNote"></div>
-    <div class="ctl"><label for="albedo">Ground albedo</label><input type="range" id="albedo" min="0" max="0.9" step="0.05"><output id="albedoOut"></output></div>
-    <div class="hint climate" id="albedoNote"></div>
-    </details>
-    <div class="row">
+        <div class="hint climate" id="climateNote"></div>
+        <div class="ctl"><label for="albedo">Ground albedo</label><input type="range" id="albedo" min="0" max="0.9" step="0.05"><output id="albedoOut"></output></div>
+        <div class="hint climate" id="albedoNote"></div>
+        </details>
+        <div class="row">
       <button class="primary" id="optBtn">Set to optimal orientation</button>
       <span class="hint">Azimuth: 0° = North, 90° = East, 180° = South, 270° = West.</span>
     </div>
-    <div class="compass">
+        <div class="compass">
       <svg id="rose" width="140" height="140" viewBox="-60 -60 120 120" aria-label="Panel direction: click or drag to set"></svg>
       <svg id="side" width="160" height="140" viewBox="0 0 140 120" aria-label="Panel tilt: click or drag to set"></svg>
     </div>
-    <p class="hint" style="text-align:center; margin:2px 0 0">Click or drag the compass to set direction, and the side view to set tilt.</p>
-    <h2 style="margin-top:14px">Estimated output</h2>
-    <div class="tiles">
+        <p class="hint" style="text-align:center; margin:2px 0 0">Click or drag the compass to set direction, and the side view to set tilt.</p>
+        <h3 style="margin-top:14px">Estimated output</h3>
+        <div class="tiles">
       <div class="tile hero"><div class="label">Annual output</div><div class="value"><span id="tAnnual">–</span><small id="tAnnualU">kWh/yr</small></div></div>
       <div class="tile"><div class="label">Specific yield</div><div class="value"><span id="tYield">–</span><small>kWh/kWp</small></div></div>
       <div class="tile"><div class="label">Share of optimum</div><div class="value"><span id="tShare">–</span><small>%</small></div></div>
       <div class="tile"><div class="label">Optimal orientation</div><div class="value" style="font-size:18px"><span id="tOpt">–</span></div></div>
     </div>
-    <p class="hint" style="margin:10px 0 0">Clear-sky model (Meinel beam, Haurwitz global, isotropic diffuse and ground reflection), scaled month by month to match NASA POWER's measured irradiance for the site. Absolute numbers are indicative; the comparison between orientations is robust.</p>
-  </section>
-
-  <section class="card full">
-    <h2>Monthly output</h2>
-    <div class="chartbox"><canvas id="monthly"></canvas></div>
-    <details><summary>Show as table</summary><table id="monthTable"></table></details>
-  </section>
-
-  <section class="card">
-    <h2>Daily power profile (solar time)</h2>
-    <div class="chartbox"><canvas id="daily"></canvas></div>
-  </section>
-
-  <section class="card">
-    <h2>Annual output by tilt and direction</h2>
-    <p class="hint" style="margin:0 0 8px">Hover to read values, click to set the panel orientation. Circle = current, star = optimum.</p>
-    <div class="heatwrap"><canvas id="heat"></canvas><div id="heattip"></div></div>
-    <div class="legend"><span>Worst</span><span class="bar"></span><span>Best</span><span class="hint">White = average of all orientations</span><span id="legendMax" style="margin-left:auto"></span></div>
-  </section>
-
-  <section class="card full collapsible" id="simCard">
-    <h2 class="cardhead" title="Click to collapse or expand">System draw simulator</h2>
-    <p class="hint" style="margin:0 0 10px">Paint the power drawn hour by hour on a typical day, size a battery, and see whether the panels and battery keep the load powered through the year. Hours are in solar time.</p>
-    <div class="sim">
-      <div>
-        <div class="row"><strong>Typical daily draw</strong><span class="hint">Drag across the bars to set each hour.</span>
-          <select id="loadPreset" title="Load a preset profile" style="margin-left:auto">
-            <option value="">Preset…</option>
-            <optgroup label="Small nodes">
-              <option value="lora">LoRa mesh repeater (nRF52 + SX1262, continuous RX) · 45 mW</option>
-              <option value="esp32">ESP32 mesh node · 90 mW</option>
-              <option value="sensor">Duty-cycled sensor node · 5 mW</option>
-              <option value="pizero">Raspberry Pi Zero 2 W, idle · 0.7 W</option>
-            </optgroup>
-            <optgroup label="Buildings">
-              <option value="house">Household (evening peak)</option>
-              <option value="office">Daytime</option>
-              <option value="night">Night lighting</option>
-              <option value="flat">Constant 500 W</option>
-            </optgroup>
-          </select>
-          <label class="hint">Unit <select id="loadUnitSel" title="Unit for the draw editor"></select></label></div>
-        <div class="loadwrap"><canvas id="loadEd"></canvas><div id="loadtip"></div></div>
-        <div class="row">
-          <label>Average draw <input type="text" id="loadAll" style="width:170px" placeholder="45 mW, 12 mA at 3.7 V, or 60"> <span id="loadAllUnit" class="unit-cycle" title="Click to change unit (µW, mW, W, kW, MW, GW)"></span></label>
-          <button id="loadAllBtn" title="Set every hour to this value">Flatten</button>
-          <span class="hint" id="loadAllNote"></span>
-          <label style="margin-left:auto" title="Yearly consumption of this profile. Type the figure from an energy bill to scale the profile to match.">Annual use <input type="text" id="loadYear" style="width:90px"> <span id="loadYearUnit"></span></label>
-        </div>
-        <div class="row"><span class="hint">Editing the average or the annual use scales the whole profile; Flatten makes every hour equal.</span></div>
+        <p class="hint" style="margin:10px 0 0">Clear-sky model (Meinel beam, Haurwitz global, isotropic diffuse and ground reflection), scaled month by month to match NASA POWER's measured irradiance for the site. Absolute numbers are indicative; the comparison between orientations is robust.</p>
       </div>
+      <div><h3>Annual output by tilt and direction</h3>
+        <p class="hint" style="margin:0 0 8px">Hover to read values, click to set the panel orientation. Circle = current, star = optimum.</p>
+        <div class="heatwrap"><canvas id="heat"></canvas><div id="heattip"></div></div>
+        <div class="legend"><span>Worst</span><span class="bar"></span><span>Best</span><span class="hint">White = average of all orientations</span><span id="legendMax" style="margin-left:auto"></span></div>
+      </div>
+    </div>
+    <div class="simcharts">
+      <div><h3>Daily power profile (solar time)</h3>
+        <div class="chartbox"><canvas id="daily"></canvas></div>
+      </div>
+      <div><h3>Monthly output</h3>
+        <div class="chartbox"><canvas id="monthly"></canvas></div>
+        <details><summary>Show as table</summary><table id="monthTable"></table></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="card full collapsible" id="battCard">
+    <div class="row cardhead" style="align-items:baseline"><h2 title="Click to collapse or expand" data-off="· excluded, no battery">Battery</h2>
+      <label style="margin-left:auto" title="Run the usage and cost sections without any storage"><input type="checkbox" id="noBatt"> No battery</label></div>
+    <p class="hint" style="margin:0 0 10px">Pick a battery or describe one. The reserve and the state of charge through the year follow from the panels above and the usage below.</p>
+    <div class="sim">
       <div class="battery">
-        <div class="ctl wide keep"><label for="battPreset">Battery</label>
+        <div class="ctl wide"><label for="battPreset">Battery</label>
           <div class="row"><input type="number" id="battN" min="1" step="1" style="width:56px" title="Number of identical modules or cells in parallel"> ×
             <select id="battPreset" title="Sets capacity, voltage, usable depth, round-trip efficiency and charge/discharge limits for a known battery">
               <option value="">Preset…</option>
@@ -290,7 +267,6 @@
                 <option data-cap="131000" data-unit="Wh" data-v="400" data-dod="0.8" data-eff="0.92" data-chg="7000" data-dis="9600">Ford F-150 Lightning · 131 kWh</option>
               </optgroup>
             </select>
-            <label title="Run every simulation without any storage"><input type="checkbox" id="noBatt"> No battery</label>
           </div></div>
         <details class="adv" id="advBatt"><summary>Advanced</summary>
         <div class="ctl wide"><label for="battCap">Battery capacity</label>
@@ -315,16 +291,50 @@
         </details>
       </div>
       <div class="tiles">
+        <div class="tile hero"><div class="label">Usable battery reserve</div><div class="value"><span id="simReserve">–</span><small id="simReserveU"></small></div><div class="hint" id="simAutonomy"></div></div>
+      </div>
+    </div>
+    <div style="margin-top:14px"><h3>State of charge through the year <span id="socNote" style="font-weight:400"></span></h3><div class="chartbox"><canvas id="simSoc"></canvas></div></div>
+  </section>
+
+  <section class="card full collapsible" id="usageCard">
+    <h2 class="cardhead" title="Click to collapse or expand">Usage</h2>
+    <p class="hint" style="margin:0 0 10px">Paint the power used hour by hour on a typical day, and see whether the panels and battery keep it powered through the year. Hours are in solar time.</p>
+    <div class="sim">
+      <div>
+        <div class="row"><strong>Typical daily usage</strong><span class="hint">Drag across the bars to set each hour.</span>
+          <select id="loadPreset" title="Load a preset profile" style="margin-left:auto">
+            <option value="">Preset…</option>
+            <optgroup label="Small nodes">
+              <option value="lora">LoRa mesh repeater (nRF52 + SX1262, continuous RX) · 45 mW</option>
+              <option value="esp32">ESP32 mesh node · 90 mW</option>
+              <option value="sensor">Duty-cycled sensor node · 5 mW</option>
+              <option value="pizero">Raspberry Pi Zero 2 W, idle · 0.7 W</option>
+            </optgroup>
+            <optgroup label="Buildings">
+              <option value="house">Household (evening peak)</option>
+              <option value="office">Daytime</option>
+              <option value="night">Night lighting</option>
+              <option value="flat">Constant 500 W</option>
+            </optgroup>
+          </select>
+          <label class="hint">Unit <select id="loadUnitSel" title="Unit for the draw editor"></select></label></div>
+        <div class="loadwrap"><canvas id="loadEd"></canvas><div id="loadtip"></div></div>
+        <div class="row">
+          <label>Average draw <input type="text" id="loadAll" style="width:170px" placeholder="45 mW, 12 mA at 3.7 V, or 60"> <span id="loadAllUnit" class="unit-cycle" title="Click to change unit (µW, mW, W, kW, MW, GW)"></span></label>
+          <button id="loadAllBtn" title="Set every hour to this value">Flatten</button>
+          <span class="hint" id="loadAllNote"></span>
+          <label style="margin-left:auto" title="Yearly consumption of this profile. Type the figure from an energy bill to scale the profile to match.">Annual use <input type="text" id="loadYear" style="width:90px"> <span id="loadYearUnit"></span></label>
+        </div>
+        <div class="row"><span class="hint">Editing the average or the annual use scales the whole profile; Flatten makes every hour equal.</span></div>
+      </div>
+      <div class="tiles">
         <div class="tile hero"><div class="label">Days fully powered</div><div class="value"><span id="simDays">–</span><small>of 365</small></div></div>
         <div class="tile"><div class="label">Hours without power</div><div class="value"><span id="simHours">–</span><small>per year</small></div></div>
-        <div class="tile"><div class="label">Usable battery reserve</div><div class="value"><span id="simReserve">–</span><small id="simReserveU"></small></div><div class="hint" id="simAutonomy"></div></div>
         <div class="tile"><div class="label">Production not used</div><div class="value"><span id="simSurplus">–</span><small>%</small></div><div class="hint">Battery full, load met</div></div>
       </div>
     </div>
-    <div class="simcharts">
-      <div><div class="hint" style="margin-bottom:4px">Monthly energy balance</div><div class="chartbox"><canvas id="simMonthly"></canvas></div></div>
-      <div><div class="hint" style="margin-bottom:4px">Battery state of charge through the year <span id="socNote"></span></div><div class="chartbox"><canvas id="simSoc"></canvas></div></div>
-    </div>
+    <div style="margin-top:14px"><h3>Monthly energy balance</h3><div class="chartbox"><canvas id="simMonthly"></canvas></div></div>
     <details><summary>Show monthly table</summary><table id="simTable"></table></details>
   </section>
 
@@ -344,6 +354,7 @@
       </div>
       <div class="tiles">
         <div class="tile hero"><div class="label">Annual saving</div><div class="value"><span id="cSaving">–</span><small>/yr</small></div><div class="hint" id="cSavingNote"></div></div>
+        <div class="tile"><div class="label">Install cost</div><div class="value"><span id="cCost">–</span></div><div class="hint" id="cCostNote"></div></div>
         <div class="tile"><div class="label" id="cPaybackLabel">Payback, solar + battery</div><div class="value"><span id="cPayback">–</span><small>years</small></div><div class="hint" id="cPaybackNote"></div></div>
         <div class="tile"><div class="label">Bill with system</div><div class="value"><span id="cBill">–</span><small>/yr</small></div><div class="hint" id="cBillNote"></div></div>
         <div class="tile"><div class="label">Export income</div><div class="value"><span id="cExport">–</span><small>/yr</small></div><div class="hint" id="cExportNote"></div></div>
@@ -408,7 +419,7 @@
   // ---------- shareable URL ----------
   function toQuery() {
     const p = new URLSearchParams(), su = sizeUnit();
-    p.set('lat', state.lat.toFixed(4)); p.set('lon', state.lon.toFixed(4));
+    p.set('lat', state.lat.toFixed(6)); p.set('lon', state.lon.toFixed(6));   // six decimals is about 10 cm, enough to pin a roof
     p.set('tilt', state.tilt); p.set('az', state.az);
     p.set('size', +(state.kwp / su.f).toPrecision(6) + su.u);
     p.set('eff', state.pr); p.set('clear', state.clear); if (!state.clearAuto) p.set('manual', '1');
@@ -430,7 +441,7 @@
     const size = (p.get('size') || '').match(/^([\d.]+)(Wp|kWp|MWp|GWp)$/);
     if (size) { state.sizeUnit = SIZE_UNITS.findIndex((u) => u.u === size[2]); state.kwp = parseFloat(size[1]) * sizeUnit().f; }
     set('pr', num('eff', 0.5, 1)); set('clear', num('clear', 0.3, 1)); state.clearAuto = !p.has('manual');
-    set('albedo', num('alb', 0, 0.9)); state.layer = p.has('sat') ? 'Satellite' : 'Map';
+    set('albedo', num('alb', 0, 0.9)); state.layer = 'Satellite';   // a link with a location opens on the satellite view, zoomed in on the pin
     const draw = (p.get('draw') || '').split(',').map(Number);
     if (draw.length === 24 && draw.every((v) => isFinite(v) && v >= 0)) state.loadW = draw;
     const du = LOAD_UNITS.findIndex((u) => u.u.replace('µ', 'u') === p.get('du')); if (du >= 0) state.loadUnit = du;
@@ -447,7 +458,7 @@
     state.gridCharge = p.has('gc'); set('cheapBelow', num('cb', 0, 1e4)); set('standing', num('st', 0, 1e5)); set('inflation', num('inf', -10, 30)); set('horizon', num('yrs', 1, 40)); set('currency', num('cur', 0, 3));
     return true;
   }
-  fromQuery(location.search);
+  const fromUrl = fromQuery(location.search);   // true when the page was opened from a link carrying a location
   let urlTimer = null;
   function syncUrl() { try { history.replaceState(null, '', location.pathname + '?' + toQuery()); } catch (e) {} }
   function save() {
@@ -556,19 +567,20 @@
   for (let t = 0; t <= 90; t += T_STEP) TILTS.push(t);
   for (let a = 0; a < 360; a += A_STEP) AZS.push(a);
   let grid = null, gridMax = 0, opt = { tilt: 0, az: 0, kwhm2: 0 };
-  let coarse = null, fine = null;
+  let coarse = null, fine = null, monthMax = 0;   // monthMax: largest monthly kWh/m² over every orientation, fixes the monthly chart's axis
 
   function recomputeGrid() {
     const kArr = kByMonth();
     coarse = buildSamples(state.lat, kArr, 3, 15);
     fine = buildSamples(state.lat, kArr, 1, 10);
     grid = new Float64Array(TILTS.length * AZS.length);
-    gridMax = 0; let bi = 0;
+    gridMax = 0; monthMax = 0; let bi = 0;
     for (let ti = 0; ti < TILTS.length; ti++) for (let ai = 0; ai < AZS.length; ai++) {
-      const v = annual(coarse, TILTS[ti], AZS[ai], state.albedo);
+      const pm = new Array(12).fill(0), v = annual(coarse, TILTS[ti], AZS[ai], state.albedo, pm);
       const idx = ti * AZS.length + ai;
       grid[idx] = v;
       if (v > gridMax) { gridMax = v; bi = idx; }
+      for (const m of pm) if (m > monthMax) monthMax = m;
     }
     // refine the optimum to 1° using the fine sample set
     const bt = TILTS[Math.floor(bi / AZS.length)], ba = AZS[bi % AZS.length];
@@ -764,7 +776,7 @@
   }
 
   // ---------- UI: map ----------
-  const map = L.map('map').setView([state.lat, state.lon], 5);
+  const map = L.map('map').setView([state.lat, state.lon], fromUrl ? 19 : 5);   // zoomed in on the roof when the location came from the link
   const baseLayers = {
     'Map': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }),
     'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }),
@@ -895,7 +907,7 @@
       plugins: { legend: legendSolid,
         tooltip: { callbacks: { labelColor: solidSwatch, title: (items) => hourLabel(items[0].parsed.x), label: (c) => ' ' + c.dataset.label + ': ' + fmtNum(c.parsed.y) + ' ' + pUnit } } },
       scales: { x: { type: 'linear', min: 0, max: 24, grid: { display: false }, ticks: { stepSize: 3, callback: (v) => hourLabel(v) } },
-        y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false }, title: { display: true, text: 'kW' } } } }
+        y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false }, title: { display: true, text: 'kW' }, ticks: { precision: 0 } } } }
   });
   function hourLabel(h) { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'); }
 
@@ -1177,7 +1189,8 @@
   function battAhTotal() { return state.noBatt ? 0 : battAh() * Math.max(1, state.battN || 1); }
   function updateBattUI() {
     const ah = battAh(), n = Math.max(1, state.battN || 1), parts = [];
-    $('noBatt').checked = !!state.noBatt; $('noSolar').checked = !!state.noSolar; document.querySelector('.battery').classList.toggle('off', !!state.noBatt);
+    $('noBatt').checked = !!state.noBatt; $('noSolar').checked = !!state.noSolar;
+    $('battCard').classList.toggle('off', !!state.noBatt); $('solarCard').classList.toggle('off', !!state.noSolar);
     updateLimitUI();
     if (state.battCapUnit !== 'mAh') parts.push(fmtNum(ah * 1000) + ' mAh');
     if (state.battCapUnit !== 'Ah') parts.push(fmtNum(ah) + ' Ah');
@@ -1512,7 +1525,7 @@
       elements: { line: { borderWidth: 2, tension: 0.3, borderJoinStyle: 'round' }, point: { radius: 2, hoverRadius: 4, borderWidth: 1, borderColor: css('--card'), hoverBorderWidth: 1, hoverBorderColor: css('--card') } },
       interaction: { mode: 'index', intersect: false },
       plugins: { legend: legendOpts, tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + gbp(c.parsed.y) } } },
-      scales: { x: { grid: { display: false } }, y: { grid: { color: (c) => c.tick.value === 0 ? css('--text-2') : gridColor }, border: { display: false }, title: { display: true, text: '£ per month' }, ticks: { callback: (v) => gbp(v) } } } }
+      scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: (c) => c.tick.value === 0 ? css('--text-2') : gridColor }, border: { display: false }, title: { display: true, text: '£ per month' }, ticks: { callback: (v) => gbp(v) } } } }
   });
   const costFlow = new Chart($('costFlow'), {
     type: 'line',
@@ -1545,6 +1558,9 @@
     const hasS = !state.noSolar, hasB = !state.noBatt;
     const cfg = hasS && hasB ? 'solar + battery' : hasS ? 'solar only' : hasB ? 'battery only' : 'nothing', sysName = 'Upgraded system (' + cfg + ')';
     $('cSaving').innerHTML = gbpHtml(savB); $('cSavingNote').textContent = 'With ' + cfg + ', against no system';
+    const parts = []; if (hasS) parts.push('solar ' + gbp(solarCostVal())); if (hasB) parts.push('battery ' + gbp(battCostVal()));
+    const manual = (hasS && state.solarCost != null) || (hasB && state.battCost != null);
+    $('cCost').innerHTML = gbpHtml(costB); $('cCostNote').textContent = parts.length > 1 ? parts.join(' + ') : parts.length ? (manual ? 'Set under Advanced' : 'Typical UK installed price; set your quote under Advanced') : 'Nothing to install';
     $('cPaybackLabel').textContent = 'Payback, ' + cfg;
     $('cPayback').textContent = pbB == null ? '–' : fmtNum(pbB); $('cPaybackNote').textContent = pbB == null ? 'Not within ' + N + ' years' : '';
     $('cBill').innerHTML = gbpHtml(billB); $('cBillNote').textContent = 'Without a system: ' + gbp(base) + ' per year';
@@ -1587,11 +1603,13 @@
     $('tYield').textContent = Math.round(sel * state.pr).toLocaleString();
     $('tShare').textContent = (sel / optAnnual * 100).toFixed(1);
     $('tOpt').textContent = opt.tilt + '° tilt, ' + opt.az + '° ' + compassName(opt.az);
-    // monthly chart and table share one energy unit chosen from the largest bar
+    // monthly chart and table share one energy unit; the axis is pinned to the best month of any orientation, so it does not move with the sliders
     const selK = selM.map((v) => v * sys), optK = optM.map((v) => v * sys);
-    const ei = unitIdx(Math.max(...selK, ...optK)), ed = unitDiv(ei); eUnit = E_UNITS[ei];
+    const top = Math.max(monthMax * sys * 1.05, ...selK, ...optK);
+    const ei = unitIdx(top), ed = unitDiv(ei); eUnit = E_UNITS[ei];
     monthly.data.datasets[0].data = selK.map((v) => v / ed);
     monthly.data.datasets[1].data = optK.map((v) => v / ed);
+    monthly.options.scales.y.suggestedMax = top / ed;
     monthly.options.scales.y.title.text = eUnit + ' per month';
     monthly.update();
     const kArr = kByMonth();
@@ -1611,11 +1629,13 @@
     const profiles = [best.p, avg, worst.p];
     // y-axis pinned to the year's peak power at the optimal orientation, so the scale stays put while exploring
     const peakKw = opt.peak / 1000 * sys;
-    const pi = unitIdx(peakKw), pd = unitDiv(pi); pUnit = P_UNITS[pi];
-    const pk = peakKw / pd, nice = Math.pow(10, Math.floor(Math.log10(pk))) / 5;
+    // step the unit down while the peak is below 2, so whole-number ticks still give the curve room
+    let pi = unitIdx(peakKw); while (pi > 0 && peakKw / unitDiv(pi) < 2) pi--;
+    const pd = unitDiv(pi); pUnit = P_UNITS[pi];
+    const pk = peakKw / pd;
     profiles.forEach((p, i) => { daily.data.datasets[i].data = p.map((q) => ({ x: q.x, y: q.y / pd })); });
     daily.options.scales.y.title.text = pUnit;
-    daily.options.scales.y.max = Math.ceil(pk * 1.05 / nice) * nice;
+    daily.options.scales.y.suggestedMax = pk * 1.05;   // Chart.js rounds up to its own tick step, so the top label is a whole number
     daily.update();
     let rows = '<tr><th>Month</th><th>Selected (' + eUnit + ')</th><th>Optimal (' + eUnit + ')</th></tr>';
     for (let m = 0; m < 12; m++) rows += '<tr><td>' + MONTHS[m] + '</td><td>' + fmtNum(selK[m] / ed) + '</td><td>' + fmtNum(optK[m] / ed) + '</td></tr>';
@@ -1631,7 +1651,7 @@
   // Collapsible sections: click the title; the state is remembered on this browser.
   let collapsed = {};
   try { collapsed = JSON.parse(localStorage.getItem('solar-collapsed') || '{}'); } catch (e) {}
-  for (const id of ['simCard', 'costCard']) {
+  for (const id of ['solarCard', 'battCard', 'usageCard', 'costCard']) {
     const card = $(id), head = card.querySelector('.cardhead h2, h2.cardhead');
     const apply = () => card.classList.toggle('collapsed', !!collapsed[id]);
     apply();
